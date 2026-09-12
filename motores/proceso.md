@@ -75,3 +75,21 @@ create table exercises (
 ```
 
 ![](images/clipboard-4127326219.png)
+
+#### Creacion de la tabla routines
+
+``` sql
+create table routines (
+    id  int auto_increment primary key,
+    name varchar(150) not null,
+    description varchar(255),
+    trainer_id  int not null,
+    status   enum('active','inactive') not null,
+    created_at  datetime not null ,
+    updated_at  datetime not null,
+
+    foreign key (trainer_id) references trainers(id)
+);
+```
+
+![](images/clipboard-412163400.png)
