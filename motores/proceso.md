@@ -132,3 +132,22 @@ create table payments (
 ```
 
 ![](images/clipboard-1514290117.png)
+
+#### Creacion de la tabla measurements
+
+``` sql
+create table measurements (
+    id int auto_increment primary key,
+    client_id  int not null,
+    weight   decimal(5,2) not null,
+    height   decimal(5,2) not null,
+    body_fat decimal(5,2) not null,
+    bmi      decimal(5,2) not null,
+    created_at  datetime not null ,
+    updated_at  datetime not null ,
+
+    foreign key (client_id) references clients(id)
+);
+```
+
+![](images/clipboard-3325664650.png)
