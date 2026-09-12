@@ -10,7 +10,7 @@ create database ActivaFit;
 
 ![](images/clipboard-1166703788.png)
 
-#### Creacion de la tabla clients
+#### 1.2 Creacion de la tabla clients
 
 ``` sql
 create table clients (
@@ -28,7 +28,7 @@ create table clients (
 
 ![](images/clipboard-1643246823.png)
 
-#### Creacion de la tabla plans
+#### 1.3 Creacion de la tabla plans
 
 ``` sql
 create table plans (
@@ -43,7 +43,7 @@ create table plans (
 
 ![](images/clipboard-3723460705.png)
 
-#### Creacion de la tabla trainers
+#### 1.4 Creacion de la tabla trainers
 
 ``` sql
 create table trainers (
@@ -60,7 +60,7 @@ create table trainers (
 
 ![](images/clipboard-1721801596.png){width="575"}
 
-#### Creacion de la tabla exercises
+#### 1.5 Creacion de la tabla exercises
 
 ``` sql
 create table exercises (
@@ -76,7 +76,7 @@ create table exercises (
 
 ![](images/clipboard-4127326219.png)
 
-#### Creacion de la tabla routines
+#### 1.6 Creacion de la tabla routines
 
 ``` sql
 create table routines (
@@ -94,7 +94,7 @@ create table routines (
 
 ![](images/clipboard-412163400.png)
 
-#### Creacion de la tabla memberships
+#### 1.7 Creacion de la tabla memberships
 
 ``` sql
 create table memberships (
@@ -114,7 +114,7 @@ create table memberships (
 
 ![](images/clipboard-1399066552.png)
 
-#### Creacion de la tabla payments
+#### 1.8 Creacion de la tabla payments
 
 ``` sql
 create table payments (
@@ -133,7 +133,7 @@ create table payments (
 
 ![](images/clipboard-1514290117.png)
 
-#### Creacion de la tabla measurements
+#### 1.9 Creacion de la tabla measurements
 
 ``` sql
 create table measurements (
@@ -151,3 +151,24 @@ create table measurements (
 ```
 
 ![](images/clipboard-3325664650.png)
+
+#### 1.10 Creacion de la tabla routine_exercises
+
+``` sql
+create table routine_exercises (
+    id int auto_increment primary key,
+    routine_id   int not null,
+    exercise_id  int not null,
+    sets  int not null,
+    repetitions  int not null,
+    weight decimal(10,2),
+    rest_seconds int not null,
+
+    foreign key (routine_id) references routines(id),
+    foreign key (exercise_id) references exercises(id),
+
+    unique (routine_id, exercise_id)
+);
+```
+
+![](images/clipboard-1479490080.png)
