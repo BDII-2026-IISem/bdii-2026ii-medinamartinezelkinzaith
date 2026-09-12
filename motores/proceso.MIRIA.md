@@ -57,25 +57,25 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del plan. |
-| name | varchar(100) | sí | — | Nombre comercial del plan (ej. "Monthly", "Quarterly"). |
+| name | varchar(100) | sí | — | Nombre comercial del plan. |
 | description | varchar(255) | no | — | Detalle de lo que incluye el plan. |
-| status | enum | sí | \_\_\_ | Estado del plan (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| status | enum('active','inactive') | sí | default 'active' | Estado del plan. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
-### 🟢 Clients
+### 🟢 clients
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del cliente. |
-| document_type | enum('CC', 'TI', 'CE', 'PASAPORTE', 'PPT') | sí | — | Tipo de documento de identidad (CC, CE, TI, etc.). |
-| document_number | varchar(30) | sí | UNIQUE | Número de documento del cliente, no se repite. |
+| document_type | enum('cc','ti','ce','pasaporte','ppt') | sí | — | Tipo de documento de identidad del cliente. |
+| document_number | varchar(30) | sí | unique | Número de documento del cliente, no se repite. |
 | name | varchar(150) | sí | — | Nombre completo del cliente. |
-| phone | varchar(30) | no | — | Teléfono de contacto. |
-| email | varchar(150) | no | unique | Correo electrónico de contacto. |
-| status | enum | sí | \_\_\_ | Estado del cliente en el sistema (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| phone | varchar(30) | no | — | Teléfono de contacto del cliente. |
+| email | varchar(150) | sí | unique | Correo electrónico del cliente, no se repite. |
+| status | enum('active','inactive') | sí | default 'active' | Estado del cliente en el sistema. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
 ### 🟢 trainers
 
@@ -83,46 +83,49 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del entrenador. |
 | name | varchar(150) | sí | — | Nombre completo del entrenador. |
-| description | varchar(255) | no | — | Especialidad o notas sobre el entrenador. |
-| status | enum | sí | \_\_\_ | Estado del entrenador (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| description | varchar(255) | no | — | Especialidad o información adicional del entrenador. |
+| status | enum('active','inactive') | sí | default 'active' | Estado del entrenador. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
 ### 🟢 exercises
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del ejercicio. |
-| name | varchar(150) | sí | — | Nombre del ejercicio (ej. "Squat"). |
-| description | varchar(255) | no | — | Explicación o técnica del ejercicio. |
-| status | enum | sí | \_\_\_ | Estado del ejercicio en el catálogo (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| name | varchar(150) | sí | — | Nombre del ejercicio. |
+| description | varchar(255) | no | — | Explicación, técnica o información del ejercicio. |
+| status | enum('active','inactive') | sí | default 'active' | Estado del ejercicio en el catálogo. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
 ### 🟡 memberships
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la membresía. |
-| name | varchar(100) | sí | — | Nombre de la membresía otorgada. |
-| description | varchar(255) | no | — | Detalle o condiciones de la membresía. |
-| status | enum | sí | \_\_ | Estado de la membresía (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
-| client_id | int, FK → client.id | sí | — | Cliente al que pertenece la membresía. |
-| plan_id | int, FK → plan.id | sí | — | Plan sobre el que se creó la membresía. |
+| client_id | int, FK → clients.id | sí | — | Cliente al que pertenece la membresía. |
+| plan_id | int, FK → plans.id | sí | — | Plan asociado a la membresía. |
+| start_date | date | sí | — | Fecha en la que comienza la membresía. |
+| end_date | date | sí | — | Fecha en la que termina la membresía. |
+| status | enum('active','expired','cancelled') | sí | default 'active' | Estado actual de la membresía. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
-### 🟡 attendances
+**Nota:** `memberships` no necesita `name` ni `description`, porque esa información pertenece a `plans`. La membresía solamente relaciona al cliente con el plan y registra el período contratado.
+
+### 🟡 attendance
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
-| id | bigint, PK, auto_increment | sí | — | Identificador único del registro de asistencia. |
-| name | varchar(100) | no | — | Etiqueta opcional del registro (ej. turno). |
-| description | varchar(255) | no | — | Observaciones del ingreso. |
-| status | enum | sí |  | Estado del registro (active/inactive, ej. anulado). |
-| created_at | datetime | sí | default current_timestamp | Fecha y hora del check-in. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
-| membership_id | int, FK → membership.id | sí | — | Membresía validada para permitir el ingreso. |
+| id | int, PK, auto_increment | sí | — | Identificador único del registro de asistencia. |
+| client_id | int, FK → clients.id | sí | — | Cliente que realizó la entrada o salida. |
+| attendance_date | datetime | sí | — | Fecha y hora en que se registró la asistencia. |
+| type | enum('entrada','salida') | sí | — | Indica si el registro corresponde a una entrada o una salida. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora en que se creó el registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
+
+**Nota:** se eliminaron `name`, `description` y `status` porque no son necesarios para registrar una entrada o salida. La tabla ahora utiliza directamente `attendance_date` y `type`.
 
 ### 🟡 routines
 
@@ -131,50 +134,56 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 | id | int, PK, auto_increment | sí | — | Identificador único de la rutina. |
 | name | varchar(100) | sí | — | Nombre de la rutina asignada. |
 | description | varchar(255) | no | — | Objetivo o enfoque de la rutina. |
-| status | enum | sí | \_\_\_ | Estado de la rutina (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
-| trainer_id | int, FK → trainer.id | sí | — | Entrenador que asignó la rutina. |
-| client_id | int, FK → client.id | sí | — | Cliente al que se le asignó la rutina. |
+| status | enum('active','inactive') | sí | default 'active' | Estado de la rutina. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
+| trainer_id | int, FK → trainers.id | sí | — | Entrenador que asignó la rutina. |
+| client_id | int, FK → clients.id | sí | — | Cliente al que se le asignó la rutina. |
 
-### 🔵 routine_exercise
+### 🔵 routine_exercises
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
-| id | int, PK, auto_increment | sí | — | Identificador único de la relación rutina-ejercicio. |
-| routine_id | int, FK → routine.id | sí | — | Rutina a la que pertenece el ejercicio. |
-| exercise_id | int, FK → exercise.id | sí | — | Ejercicio incluido en la rutina. |
-| relation_data | varchar(255) | no | — | Series, repeticiones o carga sugerida. |
-| status | enum | sí | \_\_\_ | Estado del ejercicio dentro de la rutina (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| id | int, PK, auto_increment | sí | — | Identificador único de la relación entre rutina y ejercicio. |
+| routine_id | int, FK → routines.id | sí | — | Rutina a la que pertenece el ejercicio. |
+| exercise_id | int, FK → exercises.id | sí | — | Ejercicio incluido en la rutina. |
+| sets | int | sí | — | Número de series que debe realizar el cliente. |
+| repetitions | int | sí | — | Número de repeticiones por serie. |
+| weight | decimal(10,2) | no | — | Peso sugerido o utilizado para el ejercicio. Puede quedar vacío si el ejercicio no utiliza peso. |
+| rest_seconds | int | sí | — | Tiempo de descanso en segundos entre series. |
+| unique(routine_id, exercise_id) | restricción UNIQUE | — | — | Evita registrar el mismo ejercicio dos veces dentro de una misma rutina. |
+
+**Nota:** `weight` queda como opcional porque existen ejercicios que pueden realizarse sin peso, como flexiones o abdominales.
 
 ### 🟡 measurements
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la medición. |
-| name | varchar(100) | no | — | Tipo de medición (ej. "Weight", "Body fat %"). |
-| description | varchar(255) | no | — | Observaciones de la medición. |
-| status | enum | sí | \_\_\_ | Estado del registro (active/inactive). |
-| created_at | datetime | sí | default current_timestamp | Fecha en que se tomó la medición. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
-| client_id | int, FK → client.id | sí | — | Cliente al que se le hizo la medición. |
-| trainer_id | int, FK → trainer.id | sí | — | Entrenador que tomó la medición. |
+| client_id | int, FK → clients.id | sí | — | Cliente al que pertenece la medición. |
+| measurement_date | date | sí | — | Fecha en que se realizó la medición física. |
+| weight | decimal(5,2) | sí | — | Peso del cliente. |
+| height | decimal(5,2) | sí | — | Altura del cliente. |
+| body_fat | decimal(5,2) | sí | — | Porcentaje de grasa corporal. |
+| bmi | decimal(5,2) | sí | — | Índice de masa corporal del cliente. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora en que se registró la medición. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
+
+**Nota:** se eliminan `name`, `description` y `status`. La medición ya tiene campos específicos para almacenar peso, altura, grasa corporal e índice de masa corporal.
 
 ### 🔴 payments
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |----|----|----|----|----|
 | id | bigint, PK, auto_increment | sí | — | Identificador único del pago. |
-| reference_type | varchar(50) | sí | ej. 'membership' | Tipo de entidad a la que aplica el pago. |
-| reference_id | int | sí | — | Id de la entidad referenciada (ej. la membresía pagada). |
-| method | varchar(50) | sí | — | Medio de pago (cash, card, transfer). |
-| amount | decimal(12,2) | sí | — | Valor pagado. |
-| payment_date | datetime | sí | default current_timestamp | Fecha en que se registró el pago. |
-| status | enum | sí | — | Estado del pago (pending, approved, rejected). |
-| created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
-| updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
+| reference_type | varchar(50) | sí | — | Tipo de entidad a la que corresponde el pago, por ejemplo una membresía. |
+| reference_id | int | sí | — | Identificador de la entidad relacionada con el pago. |
+| method | varchar(50) | sí | — | Medio utilizado para realizar el pago, como efectivo, tarjeta o transferencia. |
+| amount | decimal(12,2) | sí | — | Valor monetario del pago. |
+| payment_date | datetime | sí | default current_timestamp | Fecha y hora en que se registró el pago. |
+| status | enum('pending','approved','rejected') | sí | — | Estado del pago. |
+| created_at | datetime | sí | default current_timestamp | Fecha y hora de creación del registro. |
+| updated_at | datetime | sí | default current_timestamp on update current_timestamp | Fecha y hora de la última modificación. |
 
 Este diseño cumple: - **FN1**: todos los atributos son atómicos, sin grupos repetitivos. - **FN2**: no hay tablas con clave compuesta y dependencias parciales (todas usan `id` como PK simple). - **FN3**: no hay dependencias transitivas — cada atributo no clave depende solo de la PK de su propia tabla.
 
