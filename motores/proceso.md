@@ -59,3 +59,19 @@ create table trainers (
 ```
 
 ![](images/clipboard-1721801596.png){width="575"}
+
+#### Creacion de la tabla exercises
+
+``` sql
+create table exercises (
+    id   int auto_increment primary key,
+    name   varchar(150) not null,
+    description  varchar(255),
+    muscle_group varchar(100),
+    status  enum('active','inactive') not null ,
+    created_at  datetime not null ,
+    updated_at  datetime not null 
+);
+```
+
+![](images/clipboard-4127326219.png)
