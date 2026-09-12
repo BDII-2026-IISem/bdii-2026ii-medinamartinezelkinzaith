@@ -93,3 +93,23 @@ create table routines (
 ```
 
 ![](images/clipboard-412163400.png)
+
+#### Creacion de la tabla memberships
+
+``` sql
+create table memberships (
+    id  int auto_increment primary key,
+    client_id  int not null,
+    plan_id    int not null,
+    start_date date not null,
+    end_date   date not null,
+    status   enum('active','expired','cancelled') not null,
+    created_at  datetime not null,
+    updated_at  datetime not null,
+
+    foreign key (client_id) references clients(id),
+    foreign key (plan_id) references plans(id)
+);
+```
+
+![](images/clipboard-1399066552.png)
