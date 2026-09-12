@@ -113,3 +113,22 @@ create table memberships (
 ```
 
 ![](images/clipboard-1399066552.png)
+
+#### Creacion de la tabla payments
+
+``` sql
+create table payments (
+    id  int auto_increment primary key,
+    client_id int not null,
+    membership_id int not null,
+    method   enum('efectivo','tarjeta','transferencia') not null,
+    amount  decimal(10,2) not null,
+    payment_date  datetime not null,
+    status enum('pendiente','pagado','cancelado') not null,
+
+    foreign key (client_id) references clients(id),
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-1514290117.png)
