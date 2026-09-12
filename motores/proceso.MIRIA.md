@@ -68,11 +68,11 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
 |---------------|---------------|---------------|---------------|---------------|
 | id | int, PK, auto_increment | sí | — | Identificador único del cliente. |
-| document_type | char(5) | sí | — | Tipo de documento de identidad (CC, CE, TI, etc.). |
+| document_type | enum('CC', 'TI', 'CE', 'PASAPORTE', 'PPT') | sí | — | Tipo de documento de identidad (CC, CE, TI, etc.). |
 | document_number | varchar(30) | sí | UNIQUE | Número de documento del cliente, no se repite. |
 | name | varchar(150) | sí | — | Nombre completo del cliente. |
 | phone | varchar(30) | no | — | Teléfono de contacto. |
-| email | varchar(150) | no | — | Correo electrónico de contacto. |
+| email | varchar(150) | no | unique | Correo electrónico de contacto. |
 | status | enum | sí | \_\_\_ | Estado del cliente en el sistema (active/inactive). |
 | created_at | datetime | sí | default current_timestamp | Fecha de creación del registro. |
 | updated_at | datetime | sí | default current_timestamp on update | Fecha de la última modificación. |
