@@ -172,3 +172,24 @@ create table routine_exercises (
 ```
 
 ![](images/clipboard-1479490080.png)
+
+#### 1.11 Creacion de la tabla attendances
+
+``` sql
+create table attendances (
+    id  int auto_increment primary key,
+    client_id  int not null,
+    attendance_date datetime not null,
+    type  enum('entrada', 'salida') not null,
+    created_at  datetime not null,
+    updated_at  datetime not null,
+
+    foreign key (client_id) references clients(id)
+);
+```
+
+![](images/clipboard-4292584851.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
