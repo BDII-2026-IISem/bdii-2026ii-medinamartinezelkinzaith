@@ -42,3 +42,20 @@ create table plans (
 ```
 
 ![](images/clipboard-3723460705.png)
+
+#### Creacion de la tabla trainers
+
+``` sql
+create table trainers (
+    id int auto_increment primary key,
+    name  varchar(150) not null,
+    phone   varchar(30),
+    email    varchar(150) unique,
+    specialty  varchar(150),
+    status      enum('active','inactive') not null,
+    created_at  datetime not null ,
+    updated_at  datetime not null 
+);
+```
+
+![](images/clipboard-1721801596.png){width="575"}

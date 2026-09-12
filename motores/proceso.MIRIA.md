@@ -13,7 +13,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ## SPEC
 
 | Código | Descripción | Aplicación |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | SPEC-01 | Construir una base de datos denominada ActivaFit. | Base de datos para ActivaFit que maneje las entidades Business del dominio (memberships, attendance, routines, payments). |
 
 ------------------------------------------------------------------------
@@ -21,7 +21,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ## Requerimientos
 
 | Requerimiento | Requisitos | Estado para ActivaFit |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | REQ-SPEC1-01 | Identificar las entidades de Business | client, plan, membership, attendance, trainer, routine, exercise, routine_exercise, measurement, payment |
 | REQ-SPEC1-02 | Definir campos, tipos de datos, obligatoriedad y valores predeterminados | Ver diccionario de datos abajo |
 | REQ-SPEC1-03 | Definir las llaves primarias y restricciones | id como PK en todas las tablas; UNIQUE en client.document_number; status/created_at/updated_at obligatorios en todas las tablas |
@@ -55,7 +55,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟢 plans
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del plan. |
 | name | varchar(100) | sí | — | Nombre comercial del plan (ej. "Monthly", "Quarterly"). |
 | description | varchar(255) | no | — | Detalle de lo que incluye el plan. |
@@ -66,7 +66,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟢 Clients
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del cliente. |
 | document_type | enum('CC', 'TI', 'CE', 'PASAPORTE', 'PPT') | sí | — | Tipo de documento de identidad (CC, CE, TI, etc.). |
 | document_number | varchar(30) | sí | UNIQUE | Número de documento del cliente, no se repite. |
@@ -80,7 +80,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟢 trainers
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del entrenador. |
 | name | varchar(150) | sí | — | Nombre completo del entrenador. |
 | description | varchar(255) | no | — | Especialidad o notas sobre el entrenador. |
@@ -91,7 +91,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟢 exercises
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único del ejercicio. |
 | name | varchar(150) | sí | — | Nombre del ejercicio (ej. "Squat"). |
 | description | varchar(255) | no | — | Explicación o técnica del ejercicio. |
@@ -102,7 +102,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟡 memberships
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la membresía. |
 | name | varchar(100) | sí | — | Nombre de la membresía otorgada. |
 | description | varchar(255) | no | — | Detalle o condiciones de la membresía. |
@@ -115,7 +115,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟡 attendances
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | bigint, PK, auto_increment | sí | — | Identificador único del registro de asistencia. |
 | name | varchar(100) | no | — | Etiqueta opcional del registro (ej. turno). |
 | description | varchar(255) | no | — | Observaciones del ingreso. |
@@ -127,7 +127,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟡 routines
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la rutina. |
 | name | varchar(100) | sí | — | Nombre de la rutina asignada. |
 | description | varchar(255) | no | — | Objetivo o enfoque de la rutina. |
@@ -140,7 +140,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🔵 routine_exercise
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la relación rutina-ejercicio. |
 | routine_id | int, FK → routine.id | sí | — | Rutina a la que pertenece el ejercicio. |
 | exercise_id | int, FK → exercise.id | sí | — | Ejercicio incluido en la rutina. |
@@ -152,7 +152,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🟡 measurements
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | int, PK, auto_increment | sí | — | Identificador único de la medición. |
 | name | varchar(100) | no | — | Tipo de medición (ej. "Weight", "Body fat %"). |
 | description | varchar(255) | no | — | Observaciones de la medición. |
@@ -165,7 +165,7 @@ Diseño e implementación progresiva de una base de datos relacional portable ll
 ### 🔴 payments
 
 | Campo | Tipo | Obligatorio | Default / Restricción | Descripción |
-|---------------|---------------|---------------|---------------|---------------|
+|----|----|----|----|----|
 | id | bigint, PK, auto_increment | sí | — | Identificador único del pago. |
 | reference_type | varchar(50) | sí | ej. 'membership' | Tipo de entidad a la que aplica el pago. |
 | reference_id | int | sí | — | Id de la entidad referenciada (ej. la membresía pagada). |
@@ -183,7 +183,7 @@ Este diseño cumple: - **FN1**: todos los atributos son atómicos, sin grupos re
 ## Criterios de aceptación y evidencia esperada
 
 | ID | Criterio de aceptación |
-|------------------------------------|------------------------------------|
+|----|----|
 | AC-SPEC1-01 | Evidencia de las entidades Business identificadas (lista o diagrama) en el repo. |
 | AC-SPEC1-02 | Evidencia del diccionario de datos completo (campos, tipos, obligatoriedad, defaults) en el repo. |
 | AC-SPEC1-03 | Evidencia de llaves primarias y restricciones definidas (script o diagrama) en el repo. |
@@ -193,7 +193,7 @@ Este diseño cumple: - **FN1**: todos los atributos son atómicos, sin grupos re
 ## Issues de la semana
 
 | ID | Descripción | REQ / SPEC |
-|------------------------|------------------------|------------------------|
+|----|----|----|
 | ISS-S01-01 | Identificar y documentar las entidades Business | REQ-SPEC1-01 |
 | ISS-S01-02 | Definir diccionario de datos (campos, tipos, obligatoriedad, defaults) | REQ-SPEC1-02 |
 | ISS-S01-03 | Definir llaves primarias y restricciones | REQ-SPEC1-03 |
