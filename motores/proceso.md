@@ -27,3 +27,18 @@ create table clients (
 ```
 
 ![](images/clipboard-1643246823.png)
+
+#### Creacion de la tabla plans
+
+``` sql
+create table plans (
+    id          int auto_increment primary key,
+    name        varchar(100) not null,
+    description varchar(255),
+    status      enum('active','inactive') not null ,
+    created_at  datetime not null ,
+    updated_at  datetime not null 
+);
+```
+
+![](images/clipboard-3723460705.png)
