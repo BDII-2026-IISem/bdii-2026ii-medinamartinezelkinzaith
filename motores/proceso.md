@@ -193,3 +193,13 @@ create table attendances (
 #### Conclusion
 
 Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
+
+### 2. Creacion de Base de Datos de forma visual por el gestor MySQL workbench
+
+### 2.1 Creamos la base de datos ActivaFit visualmente
+
+![](images/clipboard-2318688189.png)
+
+#### como resultado tenemos esto:
+
+![](images/clipboard-4058489044.png)
