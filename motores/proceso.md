@@ -203,3 +203,13 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 #### como resultado tenemos esto:
 
 ![](images/clipboard-4058489044.png)
+
+### 2.2 Creacion de la tabla clients
+
+![](images/clipboard-2352197269.png)
+
+![](images/clipboard-1641418169.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3041759457.png)
