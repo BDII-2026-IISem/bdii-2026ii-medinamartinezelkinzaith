@@ -270,7 +270,7 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 ![](images/clipboard-1240304935.png)
 
-#### 2.9 Creacion de la tabla payments
+#### 2.9 Creacion de la tabla measurements
 
 ![](images/clipboard-2635334943.png)
 
@@ -279,3 +279,13 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3322728818.png)
+
+#### 2.10 Creacion de la tabla routine_exercises
+
+![](images/clipboard-3739625507.png)
+
+![](images/clipboard-1349867308.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1953397107.png)
