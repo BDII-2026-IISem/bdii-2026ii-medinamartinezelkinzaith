@@ -289,3 +289,17 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1953397107.png)
+
+#### 2.11 Creacion de la tabla attendances
+
+![](images/clipboard-2007665871.png)
+
+![](images/clipboard-2501143948.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1306994848.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de MySQL por la parte visual en workbench , como resultado tenemos las 10 tablas creadas correctamente.
