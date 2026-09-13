@@ -2,7 +2,7 @@
 
 ## 1. Base de Datos MySQL
 
-### 1.1 Creacion de Base de Datos por el terminal de DBeaver
+#### 1.1 Creacion de Base de Datos por el terminal de DBeaver
 
 ``` sql
 create database ActivaFit;
@@ -196,15 +196,15 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 ### 2. Creacion de Base de Datos de forma visual por el gestor MySQL workbench
 
-### 2.1 Creamos la base de datos ActivaFit visualmente
+#### 2.1 Creamos la base de datos ActivaFit visualmente
 
 ![](images/clipboard-2318688189.png)
 
-#### como resultado tenemos esto:
+**como resultado tenemos esto:**
 
 ![](images/clipboard-4058489044.png)
 
-### 2.2 Creacion de la tabla clients
+#### 2.2 Creacion de la tabla clients
 
 ![](images/clipboard-2352197269.png)
 
@@ -213,3 +213,13 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3041759457.png)
+
+#### 2.2 Creacion de la tabla plans
+
+![](images/clipboard-847439316.png)
+
+![](images/clipboard-2433541301.png)
+
+**como resultado tenemos esto:**
+
+![](images/clipboard-958377814.png)
