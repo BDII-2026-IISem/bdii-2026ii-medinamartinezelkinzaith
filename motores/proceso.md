@@ -244,6 +244,18 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 ![](images/clipboard-2229566579.png)
 
-![**como resultado tenemos esto:**](images/clipboard-2687860994.png)
+![](images/clipboard-2687860994.png)
+
+**Evidencia de la creacion:**
 
 ![](images/clipboard-451871268.png)
+
+#### 2.7 Creacion de la tabla memberships
+
+![](images/clipboard-2995360096.png)
+
+![](images/clipboard-1005660322.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3250348148.png)
