@@ -269,3 +269,13 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1240304935.png)
+
+#### 2.9 Creacion de la tabla payments
+
+![](images/clipboard-2635334943.png)
+
+![](images/clipboard-2905752761.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3322728818.png)
