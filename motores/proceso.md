@@ -239,3 +239,11 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 **como resultado tenemos esto:**
 
 ![](images/clipboard-926617714.png)
+
+#### 2.6 Creacion de la tabla routines
+
+![](images/clipboard-2229566579.png)
+
+![**como resultado tenemos esto:**](images/clipboard-2687860994.png)
+
+![](images/clipboard-451871268.png)

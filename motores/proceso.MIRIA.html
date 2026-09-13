@@ -369,12 +369,6 @@ Microsoft SQL Server y Oracle.</p>
 <strong>Business</strong>. Las entidades de Auth (usuario, rol,
 usuario_rol) quedan fuera del alcance de esta semana.</p>
 </blockquote>
-<blockquote>
-<p>Nota de estandarización: todos los nombres de tablas y campos están
-en <strong>inglés</strong>. Todas las tablas incluyen de forma
-obligatoria los campos <strong>status</strong>,
-<strong>created_at</strong> y <strong>updated_at</strong>.</p>
-</blockquote>
 <hr />
 </div>
 <div id="spec" class="section level2">
@@ -443,6 +437,11 @@ status/created_at/updated_at obligatorios en todas las tablas</td>
 <td>membership→client/plan; attendance→membership;
 routine→trainer/client; routine_exercise→routine/exercise;
 measurement→client/trainer</td>
+</tr>
+<tr class="odd">
+<td>REQ-SPEC1-05</td>
+<td>Crear físicamente las tablas en MySQL y los otros motores</td>
+<td></td>
 </tr>
 </tbody>
 </table>
@@ -570,7 +569,7 @@ measurement→client/trainer</td>
 <td>varchar(100)</td>
 <td>sí</td>
 <td>—</td>
-<td>Nombre comercial del plan (ej. “Monthly”, “Quarterly”).</td>
+<td>Nombre comercial del plan.</td>
 </tr>
 <tr class="odd">
 <td>description</td>
@@ -581,30 +580,30 @@ measurement→client/trainer</td>
 </tr>
 <tr class="even">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘inactive’)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del plan (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado del plan.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div id="clients" class="section level3">
-<h3>🟢 Clients</h3>
+<h3>🟢 clients</h3>
 <table>
 <colgroup>
 <col width="20%" />
@@ -632,16 +631,16 @@ measurement→client/trainer</td>
 </tr>
 <tr class="even">
 <td>document_type</td>
-<td>char(5)</td>
+<td>enum(‘cc’,‘ti’,‘ce’,‘pasaporte’,‘ppt’)</td>
 <td>sí</td>
 <td>—</td>
-<td>Tipo de documento de identidad (CC, CE, TI, etc.).</td>
+<td>Tipo de documento de identidad del cliente.</td>
 </tr>
 <tr class="odd">
 <td>document_number</td>
 <td>varchar(30)</td>
 <td>sí</td>
-<td>UNIQUE</td>
+<td>unique</td>
 <td>Número de documento del cliente, no se repite.</td>
 </tr>
 <tr class="even">
@@ -656,35 +655,35 @@ measurement→client/trainer</td>
 <td>varchar(30)</td>
 <td>no</td>
 <td>—</td>
-<td>Teléfono de contacto.</td>
+<td>Teléfono de contacto del cliente.</td>
 </tr>
 <tr class="even">
 <td>email</td>
 <td>varchar(150)</td>
-<td>no</td>
-<td>—</td>
-<td>Correo electrónico de contacto.</td>
+<td>sí</td>
+<td>unique</td>
+<td>Correo electrónico del cliente, no se repite.</td>
 </tr>
 <tr class="odd">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘inactive’)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del cliente en el sistema (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado del cliente en el sistema.</td>
 </tr>
 <tr class="even">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="odd">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
@@ -728,28 +727,28 @@ measurement→client/trainer</td>
 <td>varchar(255)</td>
 <td>no</td>
 <td>—</td>
-<td>Especialidad o notas sobre el entrenador.</td>
+<td>Especialidad o información adicional del entrenador.</td>
 </tr>
 <tr class="even">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘inactive’)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del entrenador (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado del entrenador.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
@@ -786,35 +785,35 @@ measurement→client/trainer</td>
 <td>varchar(150)</td>
 <td>sí</td>
 <td>—</td>
-<td>Nombre del ejercicio (ej. “Squat”).</td>
+<td>Nombre del ejercicio.</td>
 </tr>
 <tr class="odd">
 <td>description</td>
 <td>varchar(255)</td>
 <td>no</td>
 <td>—</td>
-<td>Explicación o técnica del ejercicio.</td>
+<td>Explicación, técnica o información del ejercicio.</td>
 </tr>
 <tr class="even">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘inactive’)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del ejercicio en el catálogo (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado del ejercicio en el catálogo.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
@@ -847,59 +846,63 @@ measurement→client/trainer</td>
 <td>Identificador único de la membresía.</td>
 </tr>
 <tr class="even">
-<td>name</td>
-<td>varchar(100)</td>
+<td>client_id</td>
+<td>int, FK → clients.id</td>
 <td>sí</td>
 <td>—</td>
-<td>Nombre de la membresía otorgada.</td>
+<td>Cliente al que pertenece la membresía.</td>
 </tr>
 <tr class="odd">
-<td>description</td>
-<td>varchar(255)</td>
-<td>no</td>
+<td>plan_id</td>
+<td>int, FK → plans.id</td>
+<td>sí</td>
 <td>—</td>
-<td>Detalle o condiciones de la membresía.</td>
+<td>Plan asociado a la membresía.</td>
+</tr>
+<tr class="even">
+<td>start_date</td>
+<td>date</td>
+<td>sí</td>
+<td>—</td>
+<td>Fecha en la que comienza la membresía.</td>
+</tr>
+<tr class="odd">
+<td>end_date</td>
+<td>date</td>
+<td>sí</td>
+<td>—</td>
+<td>Fecha en la que termina la membresía.</td>
 </tr>
 <tr class="even">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘expired’,‘cancelled’)</td>
 <td>sí</td>
-<td>__</td>
-<td>Estado de la membresía (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado actual de la membresía.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
-</tr>
-<tr class="odd">
-<td>client_id</td>
-<td>int, FK → client.id</td>
-<td>sí</td>
-<td>—</td>
-<td>Cliente al que pertenece la membresía.</td>
-</tr>
-<tr class="even">
-<td>plan_id</td>
-<td>int, FK → plan.id</td>
-<td>sí</td>
-<td>—</td>
-<td>Plan sobre el que se creó la membresía.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Nota:</strong> <code>memberships</code> no necesita
+<code>name</code> ni <code>description</code>, porque esa información
+pertenece a <code>plans</code>. La membresía solamente relaciona al
+cliente con el plan y registra el período contratado.</p>
 </div>
-<div id="attendances" class="section level3">
-<h3>🟡 attendances</h3>
+<div id="attendance" class="section level3">
+<h3>🟡 attendance</h3>
 <table>
 <colgroup>
 <col width="20%" />
@@ -920,55 +923,52 @@ measurement→client/trainer</td>
 <tbody>
 <tr class="odd">
 <td>id</td>
-<td>bigint, PK, auto_increment</td>
+<td>int, PK, auto_increment</td>
 <td>sí</td>
 <td>—</td>
 <td>Identificador único del registro de asistencia.</td>
 </tr>
 <tr class="even">
-<td>name</td>
-<td>varchar(100)</td>
-<td>no</td>
+<td>client_id</td>
+<td>int, FK → clients.id</td>
+<td>sí</td>
 <td>—</td>
-<td>Etiqueta opcional del registro (ej. turno).</td>
+<td>Cliente que realizó la entrada o salida.</td>
 </tr>
 <tr class="odd">
-<td>description</td>
-<td>varchar(255)</td>
-<td>no</td>
+<td>attendance_date</td>
+<td>datetime</td>
+<td>sí</td>
 <td>—</td>
-<td>Observaciones del ingreso.</td>
+<td>Fecha y hora en que se registró la asistencia.</td>
 </tr>
 <tr class="even">
-<td>status</td>
-<td>enum</td>
+<td>type</td>
+<td>enum(‘entrada’,‘salida’)</td>
 <td>sí</td>
-<td></td>
-<td>Estado del registro (active/inactive, ej. anulado).</td>
+<td>—</td>
+<td>Indica si el registro corresponde a una entrada o una salida.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha y hora del check-in.</td>
+<td>Fecha y hora en que se creó el registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
-</tr>
-<tr class="odd">
-<td>membership_id</td>
-<td>int, FK → membership.id</td>
-<td>sí</td>
-<td>—</td>
-<td>Membresía validada para permitir el ingreso.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Nota:</strong> se eliminaron <code>name</code>,
+<code>description</code> y <code>status</code> porque no son necesarios
+para registrar una entrada o salida. La tabla ahora utiliza directamente
+<code>attendance_date</code> y <code>type</code>.</p>
 </div>
 <div id="routines" class="section level3">
 <h3>🟡 routines</h3>
@@ -1013,35 +1013,35 @@ measurement→client/trainer</td>
 </tr>
 <tr class="even">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘active’,‘inactive’)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado de la rutina (active/inactive).</td>
+<td>default ‘active’</td>
+<td>Estado de la rutina.</td>
 </tr>
 <tr class="odd">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="even">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 <tr class="odd">
 <td>trainer_id</td>
-<td>int, FK → trainer.id</td>
+<td>int, FK → trainers.id</td>
 <td>sí</td>
 <td>—</td>
 <td>Entrenador que asignó la rutina.</td>
 </tr>
 <tr class="even">
 <td>client_id</td>
-<td>int, FK → client.id</td>
+<td>int, FK → clients.id</td>
 <td>sí</td>
 <td>—</td>
 <td>Cliente al que se le asignó la rutina.</td>
@@ -1049,8 +1049,8 @@ measurement→client/trainer</td>
 </tbody>
 </table>
 </div>
-<div id="routine_exercise" class="section level3">
-<h3>🔵 routine_exercise</h3>
+<div id="routine_exercises" class="section level3">
+<h3>🔵 routine_exercises</h3>
 <table>
 <colgroup>
 <col width="20%" />
@@ -1074,52 +1074,64 @@ measurement→client/trainer</td>
 <td>int, PK, auto_increment</td>
 <td>sí</td>
 <td>—</td>
-<td>Identificador único de la relación rutina-ejercicio.</td>
+<td>Identificador único de la relación entre rutina y ejercicio.</td>
 </tr>
 <tr class="even">
 <td>routine_id</td>
-<td>int, FK → routine.id</td>
+<td>int, FK → routines.id</td>
 <td>sí</td>
 <td>—</td>
 <td>Rutina a la que pertenece el ejercicio.</td>
 </tr>
 <tr class="odd">
 <td>exercise_id</td>
-<td>int, FK → exercise.id</td>
+<td>int, FK → exercises.id</td>
 <td>sí</td>
 <td>—</td>
 <td>Ejercicio incluido en la rutina.</td>
 </tr>
 <tr class="even">
-<td>relation_data</td>
-<td>varchar(255)</td>
-<td>no</td>
+<td>sets</td>
+<td>int</td>
+<td>sí</td>
 <td>—</td>
-<td>Series, repeticiones o carga sugerida.</td>
+<td>Número de series que debe realizar el cliente.</td>
 </tr>
 <tr class="odd">
-<td>status</td>
-<td>enum</td>
+<td>repetitions</td>
+<td>int</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del ejercicio dentro de la rutina (active/inactive).</td>
+<td>—</td>
+<td>Número de repeticiones por serie.</td>
 </tr>
 <tr class="even">
-<td>created_at</td>
-<td>datetime</td>
-<td>sí</td>
-<td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>weight</td>
+<td>decimal(10,2)</td>
+<td>no</td>
+<td>—</td>
+<td>Peso sugerido o utilizado para el ejercicio. Puede quedar vacío si
+el ejercicio no utiliza peso.</td>
 </tr>
 <tr class="odd">
-<td>updated_at</td>
-<td>datetime</td>
+<td>rest_seconds</td>
+<td>int</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>—</td>
+<td>Tiempo de descanso en segundos entre series.</td>
+</tr>
+<tr class="even">
+<td>unique(routine_id, exercise_id)</td>
+<td>restricción UNIQUE</td>
+<td>—</td>
+<td>—</td>
+<td>Evita registrar el mismo ejercicio dos veces dentro de una misma
+rutina.</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Nota:</strong> <code>weight</code> queda como opcional porque
+existen ejercicios que pueden realizarse sin peso, como flexiones o
+abdominales.</p>
 </div>
 <div id="measurements" class="section level3">
 <h3>🟡 measurements</h3>
@@ -1149,56 +1161,67 @@ measurement→client/trainer</td>
 <td>Identificador único de la medición.</td>
 </tr>
 <tr class="even">
-<td>name</td>
-<td>varchar(100)</td>
-<td>no</td>
+<td>client_id</td>
+<td>int, FK → clients.id</td>
+<td>sí</td>
 <td>—</td>
-<td>Tipo de medición (ej. “Weight”, “Body fat %”).</td>
+<td>Cliente al que pertenece la medición.</td>
 </tr>
 <tr class="odd">
-<td>description</td>
-<td>varchar(255)</td>
-<td>no</td>
+<td>measurement_date</td>
+<td>date</td>
+<td>sí</td>
 <td>—</td>
-<td>Observaciones de la medición.</td>
+<td>Fecha en que se realizó la medición física.</td>
 </tr>
 <tr class="even">
-<td>status</td>
-<td>enum</td>
+<td>weight</td>
+<td>decimal(5,2)</td>
 <td>sí</td>
-<td>___</td>
-<td>Estado del registro (active/inactive).</td>
+<td>—</td>
+<td>Peso del cliente.</td>
 </tr>
 <tr class="odd">
+<td>height</td>
+<td>decimal(5,2)</td>
+<td>sí</td>
+<td>—</td>
+<td>Altura del cliente.</td>
+</tr>
+<tr class="even">
+<td>body_fat</td>
+<td>decimal(5,2)</td>
+<td>sí</td>
+<td>—</td>
+<td>Porcentaje de grasa corporal.</td>
+</tr>
+<tr class="odd">
+<td>bmi</td>
+<td>decimal(5,2)</td>
+<td>sí</td>
+<td>—</td>
+<td>Índice de masa corporal del cliente.</td>
+</tr>
+<tr class="even">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha en que se tomó la medición.</td>
+<td>Fecha y hora en que se registró la medición.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
-</tr>
-<tr class="odd">
-<td>client_id</td>
-<td>int, FK → client.id</td>
-<td>sí</td>
-<td>—</td>
-<td>Cliente al que se le hizo la medición.</td>
-</tr>
-<tr class="even">
-<td>trainer_id</td>
-<td>int, FK → trainer.id</td>
-<td>sí</td>
-<td>—</td>
-<td>Entrenador que tomó la medición.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
+<p><strong>Nota:</strong> se eliminan <code>name</code>,
+<code>description</code> y <code>status</code>. La medición ya tiene
+campos específicos para almacenar peso, altura, grasa corporal e índice
+de masa corporal.</p>
 </div>
 <div id="payments" class="section level3">
 <h3>🔴 payments</h3>
@@ -1231,57 +1254,59 @@ measurement→client/trainer</td>
 <td>reference_type</td>
 <td>varchar(50)</td>
 <td>sí</td>
-<td>ej. ‘membership’</td>
-<td>Tipo de entidad a la que aplica el pago.</td>
+<td>—</td>
+<td>Tipo de entidad a la que corresponde el pago, por ejemplo una
+membresía.</td>
 </tr>
 <tr class="odd">
 <td>reference_id</td>
 <td>int</td>
 <td>sí</td>
 <td>—</td>
-<td>Id de la entidad referenciada (ej. la membresía pagada).</td>
+<td>Identificador de la entidad relacionada con el pago.</td>
 </tr>
 <tr class="even">
 <td>method</td>
 <td>varchar(50)</td>
 <td>sí</td>
 <td>—</td>
-<td>Medio de pago (cash, card, transfer).</td>
+<td>Medio utilizado para realizar el pago, como efectivo, tarjeta o
+transferencia.</td>
 </tr>
 <tr class="odd">
 <td>amount</td>
 <td>decimal(12,2)</td>
 <td>sí</td>
 <td>—</td>
-<td>Valor pagado.</td>
+<td>Valor monetario del pago.</td>
 </tr>
 <tr class="even">
 <td>payment_date</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha en que se registró el pago.</td>
+<td>Fecha y hora en que se registró el pago.</td>
 </tr>
 <tr class="odd">
 <td>status</td>
-<td>enum</td>
+<td>enum(‘pending’,‘approved’,‘rejected’)</td>
 <td>sí</td>
 <td>—</td>
-<td>Estado del pago (pending, approved, rejected).</td>
+<td>Estado del pago.</td>
 </tr>
 <tr class="even">
 <td>created_at</td>
 <td>datetime</td>
 <td>sí</td>
 <td>default current_timestamp</td>
-<td>Fecha de creación del registro.</td>
+<td>Fecha y hora de creación del registro.</td>
 </tr>
 <tr class="odd">
 <td>updated_at</td>
 <td>datetime</td>
 <td>sí</td>
-<td>default current_timestamp on update</td>
-<td>Fecha de la última modificación.</td>
+<td>default current_timestamp on update current_timestamp</td>
+<td>Fecha y hora de la última modificación.</td>
 </tr>
 </tbody>
 </table>
@@ -1293,8 +1318,8 @@ como PK simple). - <strong>FN3</strong>: no hay dependencias transitivas
 <hr />
 </div>
 </div>
-<div id="plan-de-la-semana" class="section level2">
-<h2>Plan de la semana</h2>
+<div id="criterios-de-aceptación-y-evidencia-esperada" class="section level2">
+<h2>Criterios de aceptación y evidencia esperada</h2>
 <table>
 <colgroup>
 <col width="50%" />
@@ -1302,35 +1327,117 @@ como PK simple). - <strong>FN3</strong>: no hay dependencias transitivas
 </colgroup>
 <thead>
 <tr class="header">
-<th>Paso</th>
-<th>Actividad</th>
+<th>ID</th>
+<th>Criterio de aceptación</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>1</td>
-<td>Confirmar entidades Business y su diccionario de datos
-(REQ-SPEC1-01, 03)</td>
+<td>AC-SPEC1-01</td>
+<td>Evidencia de las entidades Business identificadas (lista o diagrama)
+en el repo.</td>
 </tr>
 <tr class="even">
-<td>2</td>
-<td>Definir llaves primarias y restricciones (REQ-SPEC1-04)</td>
+<td>AC-SPEC1-02</td>
+<td>Evidencia del diccionario de datos completo (campos, tipos,
+obligatoriedad, defaults) en el repo.</td>
 </tr>
 <tr class="odd">
-<td>3</td>
-<td>Definir relaciones y llaves foráneas (REQ-SPEC1-05)</td>
+<td>AC-SPEC1-03</td>
+<td>Evidencia de llaves primarias y restricciones definidas (script o
+diagrama) en el repo.</td>
 </tr>
 <tr class="even">
-<td>4</td>
-<td>Levantar contenedor de MySQL en Docker</td>
+<td>AC-SPEC1-04</td>
+<td>Evidencia de relaciones y llaves foráneas definidas (diagrama ER) en
+el repo.</td>
 </tr>
 <tr class="odd">
-<td>5</td>
-<td>Conectar DBeaver de forma remota al contenedor</td>
+<td>AC-SPEC1-05</td>
+<td>Evidencia de las tablas creadas físicamente en MySQL y los otros
+motores.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="issues-de-la-semana" class="section level2">
+<h2>Issues de la semana</h2>
+<table>
+<colgroup>
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>ID</th>
+<th>Descripción</th>
+<th>REQ / SPEC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ISS-S01-01</td>
+<td>Identificar y documentar las entidades Business</td>
+<td>REQ-SPEC1-01</td>
 </tr>
 <tr class="even">
-<td>6</td>
-<td>Verificar FN1/FN2/FN3 (SPEC-02)</td>
+<td>ISS-S01-02</td>
+<td>Definir diccionario de datos (campos, tipos, obligatoriedad,
+defaults)</td>
+<td>REQ-SPEC1-02</td>
+</tr>
+<tr class="odd">
+<td>ISS-S01-03</td>
+<td>Definir llaves primarias y restricciones</td>
+<td>REQ-SPEC1-03</td>
+</tr>
+<tr class="even">
+<td>ISS-S01-04</td>
+<td>Definir relaciones y llaves foráneas entre entidades</td>
+<td>REQ-SPEC1-04</td>
+</tr>
+<tr class="odd">
+<td>ISS-S01-05</td>
+<td>Levantar MySQL y los otros motores en Docker, conectar DBeaver y
+crear físicamente las tablas</td>
+<td>REQ-SPEC1-05</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Definition of Ready (DoR):</strong> REQ y AC asociados y
+observables. <strong>Definition of Done (DoD):</strong> evidencia en
+repo + Issue en Hecho + bitácora.</p>
+</div>
+<div id="dependencias-entre-issues" class="section level2">
+<h2>Dependencias entre Issues</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Issue</th>
+<th>Depende de</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ISS-S01-01</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td>ISS-S01-02</td>
+<td>ISS-S01-01</td>
+</tr>
+<tr class="odd">
+<td>ISS-S01-03</td>
+<td>ISS-S01-02</td>
+</tr>
+<tr class="even">
+<td>ISS-S01-04</td>
+<td>ISS-S01-03</td>
+</tr>
+<tr class="odd">
+<td>ISS-S01-05</td>
+<td>ISS-S01-04</td>
 </tr>
 </tbody>
 </table>
