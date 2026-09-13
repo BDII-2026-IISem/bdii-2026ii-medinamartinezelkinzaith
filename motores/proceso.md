@@ -224,10 +224,18 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 ![](images/clipboard-958377814.png)
 
-#### 2.2 Creacion de la tabla trainers
+#### 2.4 Creacion de la tabla trainers
 
 ![![](images/clipboard-1340346191.png)](images/clipboard-698143492.png)
 
 **Evidencia de la creacion:**
 
-![](images/clipboard-214344364.png)
+#### 2.5 Creacion de la tabla exercises
+
+![](images/clipboard-939901527.png)
+
+![](images/clipboard-3757525269.png)
+
+**como resultado tenemos esto:**
+
+![](images/clipboard-926617714.png)
