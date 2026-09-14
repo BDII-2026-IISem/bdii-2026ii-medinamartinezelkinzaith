@@ -478,3 +478,23 @@ create table attendance (
 ```
 
 ![](images/clipboard-2002916067.png)
+
+#### 2.11 Creacion de la tabla payments
+
+``` sql
+create table payments (
+    id  bigserial primary key,
+    membership_id  int not null,
+    method  varchar(50) not null,
+    amount   numeric(12,2) not null,
+    payment_date   timestamp not null,
+    status   varchar(20) not null
+                   check (status in ('pending', 'approved', 'rejected')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null,
+    
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-705174275.png)
