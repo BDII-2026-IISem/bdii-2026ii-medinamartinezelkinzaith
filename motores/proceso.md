@@ -359,3 +359,19 @@ create table trainers (
 ```
 
 ![](images/clipboard-757270587.png)
+
+#### 2.05 Creacion de la tabla exercises
+
+``` sql
+create table exercises (
+    id  serial primary key,
+    name   varchar(150) not null,
+    description varchar(255),
+    status varchar(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null
+);
+```
+
+![](images/clipboard-3933759883.png)
