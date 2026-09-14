@@ -327,3 +327,19 @@ id  serial primary key,     document_type   varchar(20) not null                
 ```
 
 ![](images/clipboard-342759490.png)
+
+#### 2.02 Creacion de la tabla plans
+
+``` sql
+create table plans (
+    id  serial primary key,
+    name varchar(100) not null,
+    description varchar(255),
+    status varchar(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null
+);
+```
+
+![](images/clipboard-3073352376.png)
