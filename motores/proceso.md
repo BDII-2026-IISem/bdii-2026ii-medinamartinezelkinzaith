@@ -307,3 +307,13 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 Con esto se ha finalizado las creacion de la base de datos de MySQL por la parte visual en workbench , como resultado tenemos las 10 tablas creadas correctamente.
 
 ![](images/clipboard-79835802.png)
+
+## 2. Base de Datos PostgreSQL
+
+#### 2.01 Creacion de Base de Datos por el terminal de DBeaver
+
+``` sql
+CREATE DATABASE ActivaFit;
+```
+
+![](images/clipboard-4762363.png)
