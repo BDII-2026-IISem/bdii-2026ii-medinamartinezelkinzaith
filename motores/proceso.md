@@ -80,19 +80,21 @@ create table exercises (
 
 ``` sql
 create table routines (
-    id  int auto_increment primary key,
-    name varchar(150) not null,
+    id   int auto_increment primary key,
+    name   varchar(100) not null,
     description varchar(255),
-    trainer_id  int not null,
-    status   enum('active','inactive') not null,
-    created_at  datetime not null ,
+    status   enum('active', 'inactive') not null,
+    created_at  datetime not null,
     updated_at  datetime not null,
+    trainer_id  int not null,
+    client_id   int not null,
 
-    foreign key (trainer_id) references trainers(id)
+    foreign key (trainer_id) references trainers(id),
+    foreign key (client_id) references clients(id)
 );
 ```
 
-![](images/clipboard-412163400.png)
+![](images/clipboard-2365311546.png)
 
 #### 1.7 Creacion de la tabla memberships
 
@@ -118,20 +120,18 @@ create table memberships (
 
 ``` sql
 create table payments (
-    id  int auto_increment primary key,
-    client_id int not null,
+    id  int auto_increment primary key
     membership_id int not null,
     method   enum('efectivo','tarjeta','transferencia') not null,
     amount  decimal(10,2) not null,
     payment_date  datetime not null,
     status enum('pendiente','pagado','cancelado') not null,
 
-    foreign key (client_id) references clients(id),
     foreign key (membership_id) references memberships(id)
 );
 ```
 
-![](images/clipboard-1514290117.png)
+![](images/clipboard-159935643.png)
 
 #### 1.9 Creacion de la tabla measurements
 
@@ -139,6 +139,7 @@ create table payments (
 create table measurements (
     id int auto_increment primary key,
     client_id  int not null,
+    trainer_id       int not null,
     weight   decimal(5,2) not null,
     height   decimal(5,2) not null,
     body_fat decimal(5,2) not null,
@@ -146,11 +147,12 @@ create table measurements (
     created_at  datetime not null ,
     updated_at  datetime not null ,
 
-    foreign key (client_id) references clients(id)
+    foreign key (client_id) references clients(id),
+    foreign key (trainer_id) references trainers(id)
 );
 ```
 
-![](images/clipboard-3325664650.png)
+![](images/clipboard-3186829574.png)
 
 #### 1.10 Creacion de la tabla routine_exercises
 
@@ -178,17 +180,17 @@ create table routine_exercises (
 ``` sql
 create table attendances (
     id  int auto_increment primary key,
-    client_id  int not null,
+    membership_id int not null,
     attendance_date datetime not null,
     type  enum('entrada', 'salida') not null,
     created_at  datetime not null,
     updated_at  datetime not null,
 
-    foreign key (client_id) references clients(id)
+    foreign key (membership_id) references memberships(id)
 );
 ```
 
-![](images/clipboard-4292584851.png)
+![](images/clipboard-349628118.png)
 
 #### Conclusion
 
@@ -242,7 +244,7 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 #### 2.6 Creacion de la tabla routines
 
-![](images/clipboard-2229566579.png)
+![](images/clipboard-2210857206.png)
 
 ![](images/clipboard-2687860994.png)
 
@@ -264,7 +266,7 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 ![](images/clipboard-2096240331.png)
 
-![](images/clipboard-2466299316.png)
+![](images/clipboard-344960225.png)
 
 **Evidencia de la creacion:**
 
@@ -272,9 +274,9 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 
 #### 2.9 Creacion de la tabla measurements
 
-![](images/clipboard-2635334943.png)
+![](images/clipboard-3714315477.png)
 
-![](images/clipboard-2905752761.png)
+![](images/clipboard-4027589991.png)
 
 **Evidencia de la creacion:**
 
@@ -303,3 +305,5 @@ Con esto se ha finalizado las creacion de la base de datos de MySQL por terminal
 #### Conclusion
 
 Con esto se ha finalizado las creacion de la base de datos de MySQL por la parte visual en workbench , como resultado tenemos las 10 tablas creadas correctamente.
+
+![](images/clipboard-79835802.png)
