@@ -317,3 +317,13 @@ CREATE DATABASE ActivaFit;
 ```
 
 ![](images/clipboard-4762363.png)
+
+#### 2.02 Creacion de la tabla clients
+
+``` sql
+create table clients (     
+id  serial primary key,     document_type   varchar(20) not null                     check (document_type in ('cc', 'ti', 'ce', 'pasaporte', 'ppt')),     document_number varchar(30) not null unique,     name varchar(150) not null,     phone varchar(30),     email  varchar(150) not null unique,     status varchar(20) not null                     check (status in ('active', 'inactive')),     created_at  timestamp not null,     updated_at  timestamp not null 
+);
+```
+
+![](images/clipboard-342759490.png)
