@@ -498,3 +498,9 @@ create table payments (
 ```
 
 ![](images/clipboard-705174275.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
+
+![](images/clipboard-3941958658.png)
