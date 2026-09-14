@@ -376,7 +376,7 @@ create table exercises (
 
 ![](images/clipboard-3933759883.png)
 
-#### 2.02 Creacion de la tabla memberships
+#### 2.06 Creacion de la tabla memberships
 
 ``` sql
 create table memberships (
@@ -396,3 +396,24 @@ create table memberships (
 ```
 
 ![](images/clipboard-3437604535.png)
+
+#### 2.07 Creacion de la tabla routines
+
+``` sql
+create table routines (
+    id   serial primary key,
+    name  varchar(100) not null,
+    description varchar(255),
+    status  varchar(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null,
+    trainer_id  int not null,
+    client_id   int not null,
+
+    foreign key (trainer_id) references trainers(id),
+    foreign key (client_id) references clients(id)
+);
+```
+
+![](images/clipboard-1188268238.png)
