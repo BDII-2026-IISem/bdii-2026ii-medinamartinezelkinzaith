@@ -460,3 +460,21 @@ create table measurements (
 ```
 
 ![](images/clipboard-2163255009.png)
+
+#### 2.10 Creacion de la tabla attendance
+
+``` sql
+create table attendance (
+    id  serial primary key,
+    membership_id    int not null,
+    attendance_date  timestamp not null,
+    type   varchar(10) not null
+                     check (type in ('entrada', 'salida')),
+    created_at timestamp not null,
+    updated_at timestamp not null,
+    
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-2002916067.png)
