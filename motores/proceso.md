@@ -759,3 +759,25 @@ create table routine_exercises (
 ```
 
 ![](images/clipboard-1029328420.png)
+
+#### 4.09 Creacion de la tabla measurements
+
+``` sql
+create table measurements (
+    id  int identity(1,1) primary key,
+    client_id int not null,
+    trainer_id int not null,
+    measurement_date date not null,
+    weight  decimal(5,2) not null,
+    height decimal(5,2) not null,
+    body_fat decimal(5,2) not null,
+    bmi  decimal(5,2) not null,
+    created_at datetime2 not null,
+    updated_at datetime2 not null,
+
+    foreign key (client_id) references clients(id),
+    foreign key (trainer_id) references trainers(id)
+);
+```
+
+![](images/clipboard-2439476468.png)
