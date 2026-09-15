@@ -664,3 +664,19 @@ create table plans (
 ```
 
 ![](images/clipboard-3180916921.png)
+
+#### 4.04 Creacion de la tabla trainers
+
+``` sql
+create table trainers (
+    id  int identity(1,1) primary key,
+    name varchar(150) not null,
+    description varchar(255),
+    status varchar(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  datetime2 not null,
+    updated_at  datetime2 not null
+);
+```
+
+![](images/clipboard-4240828559.png)
