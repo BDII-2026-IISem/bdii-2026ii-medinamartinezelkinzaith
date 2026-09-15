@@ -628,3 +628,23 @@ create database ACTIVAFIT1;
 ```
 
 ![](images/clipboard-3799741589.png)
+
+#### 4.02 Creacion de la tabla clients
+
+``` sql
+create table clients (
+    id   int identity(1,1) primary key,
+    document_type   varchar(20) not null
+                    check (document_type in ('cc', 'ti', 'ce', 'pasaporte', 'ppt')),
+    document_number varchar(30) not null unique,
+    name  varchar(150) not null,
+    phone  varchar(30),
+    email  varchar(150) not null unique,
+    status varchar(20) not null
+                    check (status in ('active', 'inactive')),
+    created_at datetime2 not null,
+    updated_at datetime2 not null
+);
+```
+
+![](images/clipboard-1366345519.png)
