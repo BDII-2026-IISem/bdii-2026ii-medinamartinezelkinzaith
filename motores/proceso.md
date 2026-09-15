@@ -738,3 +738,24 @@ create table routines (
 ```
 
 ![](images/clipboard-2683210246.png)
+
+#### 4.08 Creacion de la tabla routine_exercises
+
+``` sql
+create table routine_exercises (
+    id int identity(1,1) primary key,
+    routine_id  int not null,
+    exercise_id int not null,
+    sets int not null,
+    repetitions  int not null,
+    weight decimal(10,2),
+    rest_seconds int not null,
+    
+    foreign key (routine_id) references routines(id),
+    foreign key (exercise_id) references exercises(id),
+    
+    unique (routine_id, exercise_id)
+);
+```
+
+![](images/clipboard-1029328420.png)
