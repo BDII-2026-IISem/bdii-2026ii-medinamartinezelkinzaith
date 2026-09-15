@@ -819,3 +819,7 @@ create table payments (
 ```
 
 ![](images/clipboard-2072861861.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de SQL Server por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
