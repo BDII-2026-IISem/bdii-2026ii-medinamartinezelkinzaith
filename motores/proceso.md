@@ -559,7 +559,7 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-653908283.png)
 
-#### 3.6 Creacion de la tabla routines
+#### 3.7 Creacion de la tabla routines
 
 ![![](images/clipboard-1187831768.png)](images/clipboard-101146499.png)
 
@@ -569,7 +569,7 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-3961352358.png)
 
-#### 3.7 Creacion de la tabla routine_exercises
+#### 3.8 Creacion de la tabla routine_exercises
 
 ![](images/clipboard-1443890919.png)
 
@@ -578,3 +578,13 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2586164657.png)
+
+#### 3.9 Creacion de la tabla measurements
+
+![](images/clipboard-299832404.png)
+
+![](images/clipboard-3375153567.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-84465217.png)
