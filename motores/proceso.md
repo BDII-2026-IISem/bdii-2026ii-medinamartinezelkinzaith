@@ -612,3 +612,9 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-376184768.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por la parte visual en PgAdmin , como resultado tenemos las 10 tablas creadas correctamente.
+
+![](images/clipboard-328763604.png)
