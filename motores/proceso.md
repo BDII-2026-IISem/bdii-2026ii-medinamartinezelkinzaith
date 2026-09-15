@@ -618,3 +618,13 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por la parte visual en PgAdmin , como resultado tenemos las 10 tablas creadas correctamente.
 
 ![](images/clipboard-328763604.png)
+
+## 4. Base de Datos SQL Server
+
+#### 4.01 Creacion de Base de Datos por el terminal de DBeaver
+
+``` sql
+create database ACTIVAFIT1;
+```
+
+![](images/clipboard-3799741589.png)
