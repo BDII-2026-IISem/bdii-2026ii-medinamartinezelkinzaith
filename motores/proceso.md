@@ -600,3 +600,15 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-477661619.png)
+
+#### 3.11 Creacion de la tabla payments
+
+![](images/clipboard-281976588.png)
+
+![](images/clipboard-1656078856.png)
+
+![](images/clipboard-3777043621.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-376184768.png)
