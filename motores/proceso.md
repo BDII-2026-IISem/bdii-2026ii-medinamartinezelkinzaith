@@ -799,3 +799,23 @@ create table attendance (
 ```
 
 ![](images/clipboard-3342849632.png)
+
+#### 4.11 Creacion de la tabla payments
+
+``` sql
+create table payments (
+    id  bigint identity(1,1) primary key,
+    membership_id  int not null,
+    method varchar(50) not null,
+    amount  decimal(12,2) not null,
+    payment_date  datetime2 not null,
+    status varchar(20) not null
+                   check (status in ('pending', 'approved', 'rejected')),
+    created_at  datetime2 not null,
+    updated_at datetime2 not null,
+
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-2072861861.png)
