@@ -648,3 +648,19 @@ create table clients (
 ```
 
 ![](images/clipboard-1366345519.png)
+
+#### 4.03 Creacion de la tabla plans
+
+``` sql
+create table plans (
+    id  int identity(1,1) primary key,
+    name varchar(100) not null,
+    description varchar(255),
+    status varchar(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  datetime2 not null,
+    updated_at  datetime2 not null
+);
+```
+
+![](images/clipboard-3180916921.png)
