@@ -558,3 +558,13 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-653908283.png)
+
+#### 3.6 Creacion de la tabla routines
+
+![![](images/clipboard-1187831768.png)](images/clipboard-101146499.png)
+
+![](images/clipboard-3220484876.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3961352358.png)
