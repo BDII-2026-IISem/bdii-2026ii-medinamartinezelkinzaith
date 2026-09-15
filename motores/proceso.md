@@ -519,4 +519,16 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-876171928.png)
 
+**Evidencia de la creacion:**
+
 ![](images/clipboard-2929991967.png)
+
+#### 3.2 Creacion de la tabla plans
+
+![](images/clipboard-230197181.png)
+
+![](images/clipboard-955048420.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1031764890.png)
