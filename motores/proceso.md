@@ -504,3 +504,11 @@ create table payments (
 Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
 
 ![](images/clipboard-3941958658.png)
+
+### 2. Creacion de Base de Datos de forma visual por el gestor PostgreSQl PgAdmin 4
+
+#### 2.1 Creamos la base de datos ActivaFit visualmente
+
+![](images/clipboard-799357560.png)
+
+![](images/clipboard-2252747237.png)
