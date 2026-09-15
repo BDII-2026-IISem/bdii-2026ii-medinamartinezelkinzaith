@@ -568,3 +568,13 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3961352358.png)
+
+#### 3.7 Creacion de la tabla routine_exercises
+
+![](images/clipboard-1443890919.png)
+
+![](images/clipboard-3657537561.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-2586164657.png)
