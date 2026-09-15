@@ -588,3 +588,15 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-84465217.png)
+
+#### 3.10 Creacion de la tabla attendance
+
+![](images/clipboard-1426066314.png)
+
+![](images/clipboard-3605289134.png)
+
+![](images/clipboard-80141095.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-477661619.png)
