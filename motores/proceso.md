@@ -541,10 +541,20 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-181348190.png)
 
-#### 3.4 Creacion de la tabla exercises
+#### 3.5 Creacion de la tabla exercises
 
 ![](images/clipboard-2036772742.png)
 
-![**Evdncia de la creacion:**](images/clipboard-4121695770.png)
+![**Evidencia de la creacion:**](images/clipboard-4121695770.png)
 
 ![](images/clipboard-3498405521.png)
+
+#### 3.6 Creacion de la tabla memberships
+
+![](images/clipboard-2164151234.png)
+
+![![](images/clipboard-2640788177.png)](images/clipboard-38512490.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-653908283.png)
