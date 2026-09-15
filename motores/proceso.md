@@ -505,10 +505,18 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-3941958658.png)
 
-### 2. Creacion de Base de Datos de forma visual por el gestor PostgreSQl PgAdmin 4
+### 3. Creacion de Base de Datos de forma visual por el gestor PostgreSQl PgAdmin 4
 
-#### 2.1 Creamos la base de datos ActivaFit visualmente
+#### 3.1 Creamos la base de datos ActivaFit visualmente
 
 ![](images/clipboard-799357560.png)
 
 ![](images/clipboard-2252747237.png)
+
+#### 3.2 Creacion de la tabla clients
+
+![](images/clipboard-1798360835.png)
+
+![](images/clipboard-876171928.png)
+
+![](images/clipboard-2929991967.png)
