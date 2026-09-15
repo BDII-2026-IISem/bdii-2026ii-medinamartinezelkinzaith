@@ -523,7 +523,7 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 
 ![](images/clipboard-2929991967.png)
 
-#### 3.2 Creacion de la tabla plans
+#### 3.3 Creacion de la tabla plans
 
 ![](images/clipboard-230197181.png)
 
@@ -532,3 +532,11 @@ Con esto se ha finalizado las creacion de la base de datos de PostgreSQL por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1031764890.png)
+
+#### 3.4 Creacion de la tabla trainers
+
+![![](images/clipboard-3322067236.png)](images/clipboard-379063030.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-181348190.png)
