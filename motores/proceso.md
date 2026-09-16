@@ -865,3 +865,21 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1219069162.png)
+
+#### 5.06 Creacion de la tabla memberships
+
+![](images/clipboard-2493615953.png)
+
+**Agregue las llaves foraneas correspondientes :**
+
+![](images/clipboard-201923255.png)
+
+![](images/clipboard-2062043764.png)
+
+**Agregue el check del estado de la memberships :**
+
+![](images/clipboard-2149157778.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3584953215.png)
