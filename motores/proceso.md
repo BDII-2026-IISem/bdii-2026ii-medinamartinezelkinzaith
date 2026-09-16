@@ -1011,3 +1011,19 @@ create table plans (
 ```
 
 ![](images/clipboard-2090666198.png)
+
+#### 6.3 Creacion de la tabla trainers
+
+``` sql
+create table trainers (
+    id  number generated always as identity primary key,
+    name varchar2(150) not null,
+    description varchar2(255),
+    status varchar2(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null
+);
+```
+
+![](images/clipboard-1182439407.png)
