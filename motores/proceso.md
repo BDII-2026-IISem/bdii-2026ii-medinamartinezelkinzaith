@@ -995,3 +995,19 @@ create table clients (
 ```
 
 ![](images/clipboard-323542112.png)
+
+#### 6.3 Creacion de la tabla plans
+
+``` sql
+create table plans (
+    id  number generated always as identity primary key,
+    name  varchar2(100) not null,
+    description varchar2(255),
+    status varchar2(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null
+);
+```
+
+![](images/clipboard-2090666198.png)
