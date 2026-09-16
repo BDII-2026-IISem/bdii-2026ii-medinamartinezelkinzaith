@@ -843,3 +843,9 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-479026640.png)
+
+#### 5.3 Creacion de la tabla plans
+
+![**Evidencia de la creacion:**](images/clipboard-3263982201.png)
+
+![](images/clipboard-3644717188.png)
