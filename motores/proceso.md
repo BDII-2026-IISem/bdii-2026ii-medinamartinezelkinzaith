@@ -849,3 +849,11 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 ![**Evidencia de la creacion:**](images/clipboard-3263982201.png)
 
 ![](images/clipboard-3644717188.png)
+
+#### 5.04 Creacion de la tabla trainers
+
+![](images/clipboard-2058576316.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-2810755926.png)
