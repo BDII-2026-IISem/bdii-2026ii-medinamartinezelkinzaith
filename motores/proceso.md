@@ -857,3 +857,11 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2810755926.png)
+
+#### 5.05 Creacion de la tabla exercises
+
+![](images/clipboard-2990630229.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1219069162.png)
