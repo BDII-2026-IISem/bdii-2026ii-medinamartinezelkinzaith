@@ -824,4 +824,8 @@ create table payments (
 
 Con esto se ha finalizado las creacion de la base de datos de SQL Server por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
 
-![](images/clipboard-1056463461.png)
+### 5. Creacion de Base de Datos se SQL Server de forma visual por el gestor SQl Server Management Studio 20
+
+#### 5.1 Creamos la base de datos ActivaFit visualmente
+
+![![](images/clipboard-2822520301.png)](images/clipboard-3587529285.png)
