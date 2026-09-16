@@ -1064,3 +1064,24 @@ create table memberships (
 ```
 
 ![](images/clipboard-2770841604.png)
+
+#### 6.7 Creacion de la tabla routines
+
+``` sql
+create table routines (
+    id  number generated always as identity primary key,
+    name varchar2(100) not null,
+    description varchar2(255),
+    status varchar2(20) not null
+                check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null,
+    trainer_id  number not null,
+    client_id   number not null,
+
+    foreign key (trainer_id) references trainers(id),
+    foreign key (client_id) references clients(id)
+);
+```
+
+![](images/clipboard-4144225013.png)
