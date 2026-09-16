@@ -943,3 +943,19 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-4211434544.png)
+
+#### 5.11 Creacion de la  tabla payments
+
+![](images/clipboard-89239555.png)
+
+**Agregue las llaves foranea correspondiente :**
+
+![](images/clipboard-557438206.png)
+
+**Agregue el check del status de la payments:**
+
+![](images/clipboard-2581187303.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1293099417.png)
