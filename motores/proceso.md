@@ -884,7 +884,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-3584953215.png)
 
-#### 5.07 Creacion de la routines
+#### 5.07 Creacion de la tabla  routines
 
 ![](images/clipboard-2512379918.png)
 
@@ -902,7 +902,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-2681044734.png)
 
-#### 5.08 Creacion de la routine_exercises
+#### 5.08 Creacion de la tabla  routine_exercises
 
 ![](images/clipboard-104718864.png)
 
@@ -915,3 +915,15 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2395288846.png)
+
+#### 5.09 Creacion de la  tabla measurements
+
+![](images/clipboard-2539753900.png)
+
+**Agregue las llaves foraneas correspondientes :**
+
+![![](images/clipboard-3900198757.png)](images/clipboard-405897033.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-91252222.png)
