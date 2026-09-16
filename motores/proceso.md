@@ -975,3 +975,23 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por la 
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3504977349.png)
+
+#### 6.2 Creacion de la tabla clients
+
+``` sql
+create table clients (
+    id  number generated always as identity primary key,
+    document_type   varchar2(20) not null
+                    check (document_type in ('cc', 'ti', 'ce', 'pasaporte', 'ppt')),
+    document_number varchar2(30) not null unique,
+    name  varchar2(150) not null,
+    phone  varchar2(30),
+    email  varchar2(150) not null unique,
+    status varchar2(20) not null
+                    check (status in ('active', 'inactive')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null
+);
+```
+
+![](images/clipboard-323542112.png)
