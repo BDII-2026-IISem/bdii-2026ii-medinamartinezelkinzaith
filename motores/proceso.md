@@ -966,4 +966,12 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por la 
 
 ![](images/clipboard-3495912535.png)
 
-S
+## 6.  Creacion de la Base de Datos Oracle
+
+#### 6.1 Creacion de Base de Datos por el terminal de DBeaver
+
+![](images/clipboard-3386198360.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3504977349.png)
