@@ -901,3 +901,17 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2681044734.png)
+
+#### 5.08 Creacion de la routine_exercises
+
+![](images/clipboard-104718864.png)
+
+**Agregue las llaves foraneas correspondientes :**
+
+![](images/clipboard-3352920502.png)
+
+![](images/clipboard-3376390507.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-2395288846.png)
