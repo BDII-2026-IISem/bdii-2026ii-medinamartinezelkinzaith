@@ -1165,4 +1165,10 @@ create table payments (
 );
 ```
 
-![](images/clipboard-712646927.png)
+![](images/clipboard-3602404027.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de Oracle por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
+
+![](images/clipboard-1957317663.png)
