@@ -927,3 +927,19 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 **Evidencia de la creacion:**
 
 ![](images/clipboard-91252222.png)
+
+#### 5.10 Creacion de la  tabla attendances
+
+![](images/clipboard-2804534999.png)
+
+**Agregue las llaves foranea correspondiente :**
+
+![](images/clipboard-2775571780.png)
+
+**Agregue el check del type de la attendances:**
+
+![](images/clipboard-2898305530.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-4211434544.png)
