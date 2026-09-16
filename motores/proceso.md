@@ -1043,3 +1043,24 @@ create table exercises (
 ```
 
 ![](images/clipboard-3272769202.png)
+
+#### 6.6 Creacion de la tabla memberships
+
+``` sql
+create table memberships (
+    id number generated always as identity primary key,
+    client_id  number not null,
+    plan_id  number not null,
+    start_date  date not null,
+    end_date  date not null,
+    status varchar2(20) not null
+                check (status in ('active', 'expired', 'cancelled')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null,
+
+    foreign key (client_id) references clients(id),
+    foreign key (plan_id) references plans(id)
+);
+```
+
+![](images/clipboard-2770841604.png)
