@@ -1107,7 +1107,7 @@ create table routine_exercises (
 
 ![](images/clipboard-2098797240.png)
 
-#### 6.2 Creacion de la tabla measurements
+#### 6.9 Creacion de la tabla measurements
 
 ``` sql
 create table measurements (
@@ -1128,3 +1128,41 @@ create table measurements (
 ```
 
 ![](images/clipboard-746689674.png)
+
+#### 6.10 Creacion de la tabla attendance  
+
+``` sql
+create table attendance (
+    id number generated always as identity primary key,
+    membership_id   number not null,
+    attendance_date  timestamp not null,
+    type varchar2(10) not null
+                     check (type in ('entrada', 'salida')),
+    created_at timestamp not null,
+    updated_at  timestamp not null,
+
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-232333838.png)
+
+#### 6.11 Creacion de la tabla payments
+
+``` sql
+create table payments (
+    id number(19) generated always as identity primary key,
+    membership_id  number not null,
+    method  varchar2(50) not null,
+    amount  number(12,2) not null,
+    payment_date   timestamp not null,
+    status         varchar2(20) not null
+                   check (status in ('pending', 'approved', 'rejected')),
+    created_at  timestamp not null,
+    updated_at  timestamp not null,
+
+    foreign key (membership_id) references memberships(id)
+);
+```
+
+![](images/clipboard-712646927.png)
