@@ -829,3 +829,17 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 #### 5.1 Creamos la base de datos ActivaFit visualmente
 
 ![![](images/clipboard-2822520301.png)](images/clipboard-3587529285.png)
+
+#### 5.2 Creacion de la tabla clients
+
+**Le asigno al id Primary key y a los atributos document y email como unique:**
+
+![](images/clipboard-4208933048.png)
+
+**Le incorpore el check a los atributos document y status:**
+
+![](images/clipboard-2686705270.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-479026640.png)
