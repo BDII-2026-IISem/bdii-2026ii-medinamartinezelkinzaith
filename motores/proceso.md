@@ -1233,7 +1233,7 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 
 ![](images/clipboard-3866047636.png)
 
-#### 7.5 Creacion de la tabla memberships
+#### 7.6 Creacion de la tabla memberships
 
 ![](images/clipboard-1485942782.png)
 
@@ -1248,3 +1248,17 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1370208128.png)
+
+#### 7.7 Creacion de la tabla routines
+
+![](images/clipboard-3625339284.png)
+
+**Le asigno al id Primary key y las llaves foraneas correspondientes y tambien le asigne el check al status :**
+
+![](images/clipboard-4017508413.png)
+
+![![](images/clipboard-3243895842.png)](images/clipboard-420794136.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3382350302.png)
