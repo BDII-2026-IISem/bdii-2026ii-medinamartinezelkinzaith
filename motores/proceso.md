@@ -1175,7 +1175,7 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 
 ## 7.  Creacion de Base de Datos se Oracle de forma visual por el gestor Oracle SQl Developer.
 
-#### 1.1 Creacion de Base de Datos 
+#### 7.1 Creacion de Base de Datos 
 
 ![](images/clipboard-3386198360.png)
 
@@ -1196,3 +1196,15 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1802855528.png)
+
+#### 7.3 Creacion de la tabla plans
+
+![](images/clipboard-730709519.png)
+
+**Le incorpore el check a el atributo status:**
+
+![](images/clipboard-1182494572.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1781978781.png)
