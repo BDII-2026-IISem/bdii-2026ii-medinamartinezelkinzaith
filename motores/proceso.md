@@ -1208,3 +1208,15 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-1781978781.png)
+
+#### 7.4 Creacion de la tabla trainers
+
+![](images/clipboard-1443033239.png)
+
+**Le incorpore el check a el atributo status:**
+
+![](images/clipboard-3569558521.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-859231931.png)
