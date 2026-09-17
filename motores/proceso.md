@@ -1232,3 +1232,19 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3866047636.png)
+
+#### 7.5 Creacion de la tabla memberships
+
+![](images/clipboard-1485942782.png)
+
+**Le asigno al id Primary key y las llaves foraneas correspondientes y tambien le asigne el check al status :**
+
+![](images/clipboard-1685938857.png)
+
+![](images/clipboard-3782232052.png)
+
+![](images/clipboard-2222847825.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1370208128.png)
