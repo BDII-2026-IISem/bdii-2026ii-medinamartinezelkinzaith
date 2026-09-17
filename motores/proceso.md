@@ -1180,3 +1180,19 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 ![](images/clipboard-3386198360.png)
 
 ![](images/clipboard-2195175290.png)
+
+#### 7.2 Creacion de la tabla clients
+
+![](images/clipboard-841045882.png)
+
+**Le asigno al id Primary key y a los atributos document y email como unique:**
+
+![](images/clipboard-2601978683.png)
+
+**Le incorpore el check a los atributos document_type y status:**
+
+![](images/clipboard-3617451271.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-1802855528.png)
