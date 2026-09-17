@@ -1306,3 +1306,17 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2933390066.png)
+
+#### 7.11 Creacion de la tabla payments
+
+![](images/clipboard-3797100511.png)
+
+**Le asigno al id Primary key y la llave foranea correspondiente y tambien le asigne el check al status:**
+
+![](images/clipboard-615396824.png)
+
+![](images/clipboard-641634273.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-2434509978.png)
