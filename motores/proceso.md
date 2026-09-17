@@ -1262,3 +1262,21 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3382350302.png)
+
+#### 7.8 Creacion de la tabla routine_exercises
+
+![](images/clipboard-631196359.png)
+
+**Le asigno unique a las dos llaves foraneas :**
+
+![](images/clipboard-1821613772.png)
+
+**Le asigno al id Primary key y las llaves foraneas correspondientes**
+
+![](images/clipboard-2867023139.png)
+
+![](images/clipboard-95989818.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3533526240.png)
