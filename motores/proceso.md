@@ -884,7 +884,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-3584953215.png)
 
-#### 5.07 Creacion de la tabla  routines
+#### 5.07 Creacion de la tabla routines
 
 ![](images/clipboard-2512379918.png)
 
@@ -902,7 +902,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-2681044734.png)
 
-#### 5.08 Creacion de la tabla  routine_exercises
+#### 5.08 Creacion de la tabla routine_exercises
 
 ![](images/clipboard-104718864.png)
 
@@ -916,7 +916,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-2395288846.png)
 
-#### 5.09 Creacion de la  tabla measurements
+#### 5.09 Creacion de la tabla measurements
 
 ![](images/clipboard-2539753900.png)
 
@@ -928,7 +928,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-91252222.png)
 
-#### 5.10 Creacion de la  tabla attendances
+#### 5.10 Creacion de la tabla attendances
 
 ![](images/clipboard-2804534999.png)
 
@@ -944,7 +944,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por ter
 
 ![](images/clipboard-4211434544.png)
 
-#### 5.11 Creacion de la  tabla payments
+#### 5.11 Creacion de la tabla payments
 
 ![](images/clipboard-89239555.png)
 
@@ -966,7 +966,7 @@ Con esto se ha finalizado las creacion de la base de datos de SQL Server por la 
 
 ![](images/clipboard-3495912535.png)
 
-## 6.  Creacion de la Base de Datos Oracle
+## 6. Creacion de la Base de Datos Oracle
 
 #### 6.1 Creacion de Base de Datos por el terminal de DBeaver
 
@@ -1129,7 +1129,7 @@ create table measurements (
 
 ![](images/clipboard-746689674.png)
 
-#### 6.10 Creacion de la tabla attendance  
+#### 6.10 Creacion de la tabla attendance
 
 ``` sql
 create table attendance (
@@ -1172,3 +1172,11 @@ create table payments (
 Con esto se ha finalizado las creacion de la base de datos de Oracle por terminal de DBeaver, como resultado tenemos las 10 tablas creadas correctamente.
 
 ![](images/clipboard-1957317663.png)
+
+## 7.  Creacion de Base de Datos se Oracle de forma visual por el gestor Oracle SQl Developer.
+
+#### 1.1 Creacion de Base de Datos 
+
+![](images/clipboard-3386198360.png)
+
+![](images/clipboard-2195175290.png)
