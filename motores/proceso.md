@@ -1280,3 +1280,29 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-3533526240.png)
+
+#### 7.9 Creacion de la tabla measurements
+
+![](images/clipboard-824265531.png)
+
+**Le asigno unique a las dos llaves foraneas :**
+
+![![](images/clipboard-3063336491.png)](images/clipboard-357845725.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-502275262.png)
+
+#### 7.10 Creacion de la tabla attendance
+
+![](images/clipboard-1163921126.png)
+
+**Le asigno al id Primary key y la llave foranea correspondientes y tambien le asigne el check al type:**
+
+![](images/clipboard-1362040320.png)
+
+![](images/clipboard-2763779419.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-2933390066.png)
