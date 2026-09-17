@@ -1320,3 +1320,21 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-2434509978.png)
+
+#### Conclusion
+
+Con esto se ha finalizado las creacion de la base de datos de Oracle por la parte visual enOracle SQl Developer, como resultado tenemos las 10 tablas creadas correctamente.
+
+![](images/clipboard-2777569894.png)
+
+**Conclusion Final**
+
+La creación de **ActivaFit** en MySQL, PostgreSQL, SQL Server y Oracle me permitió aprender y fortalecer mis conocimientos. Además, la práctica de crear las tablas, relaciones y restricciones fue muy satisfactoria, ya que me ayudó a tener más práctica con **DBeaver** y las **herramientas visuales nativas** de cada motor.
+
+### Presentado por:
+
+**Elkin Zaith Medina Martinez**
+
+**Estudiante de Ingeniería de Sistemas**
+
+**Universidad de La Guajira**
