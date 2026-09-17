@@ -1220,3 +1220,15 @@ Con esto se ha finalizado las creacion de la base de datos de Oracle por termina
 **Evidencia de la creacion:**
 
 ![](images/clipboard-859231931.png)
+
+#### 7.5 Creacion de la tabla exercises
+
+![](images/clipboard-756300373.png)
+
+**Le incorpore el check a el status:**
+
+![](images/clipboard-335847896.png)
+
+**Evidencia de la creacion:**
+
+![](images/clipboard-3866047636.png)
