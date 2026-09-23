@@ -82,3 +82,34 @@ where  M.status = "expired";
 ```
 
 ![](images/clipboard-3314925970.png)
+
+### 1.6 Consultas con filtros condicional LIKE 
+
+``` sql
+select * 
+from clients as C 
+where C.email like 'm%';
+```
+
+![](images/clipboard-4259360956.png)
+
+**Mostrar todos los correos de los clientes que contengan el dominio gmail**
+
+``` sql
+SELECT * 
+FROM clients as C 
+where C.email like concat('%','gmail','%'); 
+```
+
+![](images/clipboard-1783617283.png)
+
+**combinacion del punto 1.5 y la implementacion de el like**
+
+``` sql
+SELECT C.name, C.email, M.* 
+FROM clients as C 
+join memberships as M on( C.id = M.client_id ) 
+where  M.status = "expired" and C.email like 'm%'; 
+```
+
+![](images/clipboard-1861361036.png)
