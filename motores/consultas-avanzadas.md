@@ -49,3 +49,13 @@ WHERE c.id = m.client_id;
 ```
 
 ![](images/clipboard-1375332071.png)
+
+### 1.4 Consultas a múltiples tablas mediante JOIN
+
+``` sql
+SELECT C.name, C.email, M.* 
+FROM clients as C 
+join memberships as M on( C.id = M.client_id ); 
+```
+
+![](images/clipboard-352116783.png)
