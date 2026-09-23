@@ -24,7 +24,7 @@
 
 ## 1. Consultas avanzadas en MySQL :
 
-#### 1.1 Mostrar algunos  de los registros de la tabla clients
+#### 1.1 Mostrar algunos de los registros de la tabla clients
 
 ``` sql
 SELECT name,document_type, document_number, status FROM clients;
@@ -32,7 +32,7 @@ SELECT name,document_type, document_number, status FROM clients;
 
 ## ![](images/clipboard-4091028779.png)
 
-### 1.2 Mostrar de  forma ordenada (DESC) las membresias desde su comienzo
+### 1.2 Mostrar de forma ordenada (DESC) las membresias desde su comienzo
 
 ``` sql
 SELECT id, start_date, end_date, status FROM memberships   ORDER BY start_date DESC;
@@ -40,7 +40,7 @@ SELECT id, start_date, end_date, status FROM memberships   ORDER BY start_date D
 
 ![](images/clipboard-2227404320.png)
 
-### 1.3 Consultas a múltiples tablas mediante  WHERE 
+### 1.3 Consultas a múltiples tablas mediante WHERE
 
 ``` sql
 SELECT *
@@ -83,7 +83,7 @@ where  M.status = "expired";
 
 ![](images/clipboard-3314925970.png)
 
-### 1.6 Consultas con filtros condicional LIKE 
+### 1.6 Consultas con filtros condicional LIKE
 
 ``` sql
 select * 
@@ -114,7 +114,7 @@ where  M.status = "expired" and C.email like 'm%';
 
 ![](images/clipboard-1861361036.png)
 
-### 1.7 Consultas con filtros condicionales  BETWEEN
+### 1.7 Consultas con filtros condicionales BETWEEN
 
 ``` sql
 SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name 
@@ -128,7 +128,7 @@ ORDER BY PAY.payment_date ASC;
 
 ![](images/clipboard-286805256.png) **Forma 2:**
 
-``` SQL
+``` sql
 SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name 
 FROM clients C, memberships M, payments PAY, plans PL
 WHERE C.id = M.client_id
@@ -139,3 +139,40 @@ ORDER BY PAY.payment_date ASC;
 ```
 
 ![](images/clipboard-2191993456.png)
+
+### 1.8 Consultas con agrupamiento GROUP BY 
+
+Se consideran este tipo de consultas cuando tenemos valores que se repiten en los registros.
+
+Si observamos la siguiente consulta:
+
+**Forma 1 con el where:**
+
+``` sql
+SELECT  C.id,  C.name,  SUM(P.amount) AS TotalSuma, 
+    COUNT(P.id) AS CuentaTotal, 
+    AVG(P.amount) AS Promedio  
+FROM clients AS C
+JOIN memberships AS M ON C.id = M.client_id
+JOIN payments AS P ON M.id = P.membership_id
+WHERE P.payment_date BETWEEN '2025-03-01 00:00:00' AND '2026-03-30 23:59:59'
+GROUP BY C.id, C.name
+ORDER BY TotalSuma DESC;
+```
+
+![](images/clipboard-2405388741.png)
+
+**Forma 1:**
+
+``` sql
+SELECT C.id,  C.name,  SUM(P.amount) AS TotalGasto, 
+    COUNT(P.id) AS CantidadPagos
+FROM clients AS C
+JOIN memberships AS M ON C.id = M.client_id
+JOIN payments AS P ON M.id = P.membership_id
+WHERE P.status = 'pagado' AND P.method = 'tarjeta'
+GROUP BY C.id, C.name
+ORDER BY TotalGasto DESC;
+```
+
+![](images/clipboard-3755764961.png)
