@@ -176,3 +176,17 @@ ORDER BY TotalGasto DESC;
 ```
 
 ![](images/clipboard-3755764961.png)
+
+**forma 2 con el having:**
+
+``` sql
+SELECT C.id, C.name, SUM(P.amount) AS TotalSuma,      AVG(P.amount) AS PromedioPago FROM clients AS C JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id GROUP BY C.id, C.name HAVING SUM(P.amount) >= 100 ORDER BY TotalSuma DESC;
+```
+
+![](images/clipboard-1139519208.png)
+
+``` sql
+SELECT C.id, C.name, C.email,  SUM(P.amount) AS TotalAnual,      COUNT(P.id) AS TotalPagos FROM clients AS C JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id WHERE P.payment_date BETWEEN '2025-01-01 00:00:00' AND '2026-12-31 23:59:59' GROUP BY C.id, C.name, C.email HAVING COUNT(P.id) >= 3 AND SUM(P.amount) > 100 ORDER BY TotalAnual DESC;
+```
+
+![](images/clipboard-2847988352.png)
