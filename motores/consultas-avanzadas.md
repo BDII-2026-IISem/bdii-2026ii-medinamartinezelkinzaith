@@ -59,3 +59,26 @@ join memberships as M on( C.id = M.client_id );
 ```
 
 ![](images/clipboard-352116783.png)
+
+### 1.5 Condiciones en las Consultas o filtros en las Consultas
+
+Para las condiciones se utiliza la clausula Where de la siguiente manera:
+
+Quiero realizar la misma consulta anterior de cualquiera de las dos formas, teniendo en cuenta la condición que presente las ventas de una fecha especifica.
+
+``` sql
+SELECT *
+FROM memberships m ,clients c 
+WHERE c.id = m.client_id and m.status ="active";
+```
+
+![](images/clipboard-3146841746.png)
+
+``` sql
+SELECT C.name, C.email, M.* 
+FROM clients as C 
+join memberships as M on( C.id = M.client_id ) 
+where  M.status = "expired"; 
+```
+
+![](images/clipboard-3314925970.png)
