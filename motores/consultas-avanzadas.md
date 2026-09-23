@@ -39,3 +39,13 @@ SELECT id, start_date, end_date, status FROM memberships   ORDER BY start_date D
 ```
 
 ![](images/clipboard-2227404320.png)
+
+### 1.3 Consultas a múltiples tablas mediante  WHERE 
+
+``` sql
+SELECT *
+FROM memberships m ,clients c 
+WHERE c.id = m.client_id;
+```
+
+![](images/clipboard-1375332071.png)
