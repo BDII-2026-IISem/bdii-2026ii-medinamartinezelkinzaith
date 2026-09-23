@@ -31,3 +31,11 @@ SELECT name,document_type, document_number, status FROM clients;
 ```
 
 ## ![](images/clipboard-4091028779.png)
+
+### 1.2 Mostrar de  forma ordenada (DESC) las membresias desde su comienzo
+
+``` sql
+SELECT id, start_date, end_date, status FROM memberships   ORDER BY start_date DESC;
+```
+
+![](images/clipboard-2227404320.png)
