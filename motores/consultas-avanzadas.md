@@ -21,3 +21,13 @@
 ![](images/clipboard-1109866264.png)
 
 ![](images/clipboard-393698099.png)
+
+## 1. Consultas avanzadas en MySQL :
+
+#### 1.1 Mostrar algunos  de los registros de la tabla clients
+
+``` sql
+SELECT name,document_type, document_number, status FROM clients;
+```
+
+## ![](images/clipboard-4091028779.png)
