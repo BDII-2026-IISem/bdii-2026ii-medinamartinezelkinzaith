@@ -243,3 +243,11 @@ SELECT name,document_type, document_number, status FROM clients;
 ```
 
 ![](images/clipboard-903827105.png)
+
+### 2.2 Mostrar de forma ordenada (DESC) las payments desde su comienzo
+
+``` sql
+SELECT id,method,amount,status FROM payments  ORDER BY payment_date DESC;
+```
+
+![](images/clipboard-1433641025.png)
