@@ -233,3 +233,13 @@ where  M.client_id is null;
 ```
 
 ![](images/clipboard-1111366890.png)
+
+## 2. Consultas avanzadas en PostgreSQL :
+
+#### 2.1 Mostrar algunos de los registros de la tabla clients
+
+``` sql
+SELECT name,document_type, document_number, status FROM clients;
+```
+
+![](images/clipboard-903827105.png)
