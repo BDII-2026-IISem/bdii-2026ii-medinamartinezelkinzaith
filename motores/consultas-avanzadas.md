@@ -415,3 +415,19 @@ SELECT id,method,amount,status FROM payments  ORDER BY payment_date DESC;
 ```
 
 ![](images/clipboard-3857241490.png)
+
+### 3.3 Consultas a múltiples tablas mediante WHERE
+
+``` sql
+SELECT m.start_date ,m.end_date ,m.status ,pay.payment_date ,pay.status  FROM  memberships m ,payments pay   WHERE m.id = pay.membership_id;
+```
+
+![](images/clipboard-1282228093.png)
+
+### 3.4 Consultas a múltiples tablas mediante JOIN
+
+``` sql
+SELECT C.name, C.email, M.*   FROM clients as C   join memberships as M on( C.id = M.client_id ); 
+```
+
+![](images/clipboard-2657358142.png)
