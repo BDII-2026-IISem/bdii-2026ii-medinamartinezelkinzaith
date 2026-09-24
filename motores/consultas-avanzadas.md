@@ -264,7 +264,7 @@ WHERE m.id = pay.membership_id;
 
 ![](images/clipboard-2986178139.png)
 
-### 3.4 Consultas a múltiples tablas mediante JOIN
+### 2.4 Consultas a múltiples tablas mediante JOIN
 
 ``` sql
 SELECT C.name, C.email, M.*  
@@ -274,7 +274,7 @@ join memberships as M on( C.id = M.client_id );
 
 ![](images/clipboard-1930710102.png)
 
-### 3.5 Condiciones en las Consultas o filtros en las Consultas
+### 2.5 Condiciones en las Consultas o filtros en las Consultas
 
 Para las condiciones se utiliza la clausula Where de la siguiente manera:
 
@@ -407,3 +407,11 @@ SELECT name,description, status FROM exercises;
 ```
 
 ![](images/clipboard-1539526662.png)
+
+### 3.2 Mostrar de forma ordenada (DESC) las payments desde su comienzo
+
+``` sql
+SELECT id,method,amount,status FROM payments  ORDER BY payment_date DESC;
+```
+
+![](images/clipboard-3857241490.png)
