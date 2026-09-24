@@ -397,3 +397,13 @@ select *  from clients as C  left join memberships  as M on(C.id = M.client_id a
 ```
 
 ![](images/clipboard-378400353.png)
+
+## 3. Consultas avanzadas en MSSQL :
+
+#### 3.1 Mostrar algunos de los registros de la tabla exercises
+
+``` sql
+SELECT name,description, status FROM exercises;
+```
+
+![](images/clipboard-1539526662.png)
