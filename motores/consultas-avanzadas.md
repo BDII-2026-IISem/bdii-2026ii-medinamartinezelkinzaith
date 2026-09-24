@@ -251,3 +251,48 @@ SELECT id,method,amount,status FROM payments  ORDER BY payment_date DESC;
 ```
 
 ![](images/clipboard-1433641025.png)
+
+### 
+
+### 2.3 Consultas a múltiples tablas mediante WHERE
+
+``` sql
+SELECT m.start_date ,m.end_date ,m.status ,pay.payment_date ,pay.status 
+FROM  memberships m ,payments pay  
+WHERE m.id = pay.membership_id;
+```
+
+![](images/clipboard-2986178139.png)
+
+### 3.4 Consultas a múltiples tablas mediante JOIN
+
+``` sql
+SELECT C.name, C.email, M.*  
+FROM clients as C  
+join memberships as M on( C.id = M.client_id ); 
+```
+
+![](images/clipboard-1930710102.png)
+
+### 1.5 Condiciones en las Consultas o filtros en las Consultas
+
+Para las condiciones se utiliza la clausula Where de la siguiente manera:
+
+Quiero realizar la misma consulta anterior de cualquiera de las dos formas, teniendo en cuenta la condición que presente las ventas de una status especifica.
+
+``` sql
+SELECT * FROM memberships m ,clients c  WHERE c.id = m.client_id and m.status ="active";
+```
+
+![](images/clipboard-3226485848.png)
+
+**Forma 2 :**
+
+``` sql
+SELECT C.name, C.email,M.start_date ,M.client_id, M.status  
+FROM clients as C  
+join memberships as M on( C.id = M.client_id )  
+where  M.status = 'expired'; 
+```
+
+![](images/clipboard-1391143237.png)
