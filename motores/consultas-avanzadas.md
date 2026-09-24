@@ -274,7 +274,7 @@ join memberships as M on( C.id = M.client_id );
 
 ![](images/clipboard-1930710102.png)
 
-### 1.5 Condiciones en las Consultas o filtros en las Consultas
+### 3.5 Condiciones en las Consultas o filtros en las Consultas
 
 Para las condiciones se utiliza la clausula Where de la siguiente manera:
 
@@ -296,3 +296,30 @@ where  M.status = 'expired';
 ```
 
 ![](images/clipboard-1391143237.png)
+
+### 1.6 Consultas con filtros condicional LIKE
+
+``` sql
+select *  from clients as C  where C.email like 'm%';
+```
+
+![](images/clipboard-347913733.png)
+
+**Mostrar todos los correos de los clientes que contengan el dominio gmail**
+
+``` sql
+SELECT *  FROM clients as C  where C.email like concat('%','gmail','%'); 
+```
+
+![](images/clipboard-2664792358.png)
+
+**combinacion del punto 1.5 y la implementacion de el like**
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status  
+FROM clients as C  
+join memberships as M on( C.id = M.client_id ) 
+where  M.status = 'expired' and C.email like 'm%'; 
+```
+
+![](images/clipboard-700465524.png)
