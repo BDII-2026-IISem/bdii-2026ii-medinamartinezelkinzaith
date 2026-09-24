@@ -491,7 +491,7 @@ SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  FRO
 
 ![](images/clipboard-2151880947.png)
 
-### 2.8 Consultas con agrupamiento GROUP BY 
+### 3.8 Consultas con agrupamiento GROUP BY 
 
 Se consideran este tipo de consultas cuando tenemos valores que se repiten en los registros.
 
@@ -628,3 +628,33 @@ join memberships  M on( C.id = M.client_id )  where  M.status = 'expired' and C.
 ```
 
 ![](images/clipboard-217980775.png)
+
+### 4.7 Consultas con filtros condicionales BETWEEN
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name 
+FROM clients C 
+JOIN memberships M ON C.id = M.client_id
+JOIN payments PAY ON M.id = PAY.membership_id 
+JOIN plans PL ON PL.id = M.plan_id
+WHERE PAY.payment_date BETWEEN TO_TIMESTAMP('2025-02-15 00:00:00', 'YYYY-MM-DD HH24:MI:SS') 
+                           AND TO_TIMESTAMP('2026-03-05 00:00:00', 'YYYY-MM-DD HH24:MI:SS')
+ORDER BY PAY.payment_date ASC;
+```
+
+![](images/clipboard-4025191586.png)
+
+**Forma 2:**
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  
+FROM clients C, memberships M, payments PAY, plans PL
+WHERE C.id = M.client_id
+  AND M.id = PAY.membership_id
+  AND PL.id = M.plan_id
+  AND M.start_date BETWEEN TO_DATE('2025-01-01', 'YYYY-MM-DD') 
+                       AND TO_DATE('2026-03-30', 'YYYY-MM-DD')
+ORDER BY PAY.payment_date ASC;
+```
+
+![](images/clipboard-1753863047.png)
