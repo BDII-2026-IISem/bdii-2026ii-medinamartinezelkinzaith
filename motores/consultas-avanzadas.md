@@ -546,3 +546,13 @@ select *  from clients as C  left join memberships  as M on(C.id = M.client_id a
 ```
 
 ![](images/clipboard-3512686044.png)
+
+## 4. Consultas avanzadas en Oracle:
+
+#### 4.1 Mostrar algunos de los registros de la tabla TRAINERS
+
+``` sql
+SELECT name,phone,email, status FROM TRAINERS  ;
+```
+
+![](images/clipboard-1794633345.png)
