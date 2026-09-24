@@ -339,3 +339,39 @@ SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  FRO
 ```
 
 ![](images/clipboard-3030982433.png)
+
+### 2.8 Consultas con agrupamiento GROUP BY 
+
+Se consideran este tipo de consultas cuando tenemos valores que se repiten en los registros.
+
+Si observamos la siguiente consulta:
+
+**Forma 1 con el where:**
+
+``` sql
+SELECT  C.id,  C.name,  SUM(P.amount) AS TotalSuma,      COUNT(P.id) AS CuentaTotal,      AVG(P.amount) AS Promedio   FROM clients AS C JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id WHERE P.payment_date BETWEEN '2025-03-01 00:00:00' AND '2026-03-30 23:59:59' GROUP BY C.id, C.name ORDER BY TotalSuma DESC;
+```
+
+![](images/clipboard-3067025203.png)
+
+**Forma 1:**
+
+``` sql
+SELECT C.id,  C.name,  SUM(P.amount) AS TotalGasto,      COUNT(P.id) AS CantidadPagos FROM clients AS C JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id WHERE P.status = 'pagado' AND P.method = 'tarjeta' GROUP BY C.id, C.name ORDER BY TotalGasto DESC;
+```
+
+![](images/clipboard-3088362081.png)
+
+**forma 2 con el having:**
+
+``` sql
+SELECT C.id, C.name, SUM(P.amount) AS TotalSuma,  AVG(P.amount) AS PromedioPago FROM clients AS C JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id  GROUP BY C.id, C.name HAVING SUM(P.amount) >= 100  ORDER BY TotalSuma DESC;
+```
+
+![](images/clipboard-1404389709.png)
+
+``` sql
+SELECT C.id, C.name, C.email,  SUM(P.amount) AS TotalAnual,    COUNT(P.id) AS TotalPagos  FROM clients AS C  JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id WHERE P.payment_date BETWEEN '2025-01-01 00:00:00' AND '2026-12-31 23:59:59'  GROUP BY C.id, C.name, C.email  HAVING COUNT(P.id) >= 3 AND SUM(P.amount) > 100  ORDER BY TotalAnual DESC;
+```
+
+![](images/clipboard-861531518.png)
