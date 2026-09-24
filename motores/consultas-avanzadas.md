@@ -475,9 +475,7 @@ FROM clients as C  where C.email like concat('%','gmail','%');
 SELECT C.name, C.email, M.start_date ,M.status   FROM clients as C   join memberships as M on( C.id = M.client_id )  where  M.status = 'expired' and C.email like 'm%'; 
 ```
 
-### ![](images/clipboard-2847147233.png)
-
-### 3.7 Consultas con filtros condicionales BETWEEN
+### ![](images/clipboard-2847147233.png)3.7 Consultas con filtros condicionales BETWEEN
 
 ``` sql
 SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  FROM clients C JOIN memberships M ON C.id = M.client_id JOIN payments PAY ON M.id = PAY.membership_id JOIN plans PL ON PL.id = M.plan_id WHERE PAY.payment_date BETWEEN '2025-01-15 12:26:02' AND '2026-04-21 13:51:24' ORDER BY PAY.payment_date ASC;
@@ -527,4 +525,24 @@ SELECT C.id, C.name, SUM(P.amount) AS TotalSuma,  AVG(P.amount) AS PromedioPago 
 SELECT C.id, C.name, C.email,  SUM(P.amount) AS TotalAnual,    COUNT(P.id) AS TotalPagos  FROM clients AS C  JOIN memberships AS M ON C.id = M.client_id JOIN payments AS P ON M.id = P.membership_id WHERE P.payment_date BETWEEN '2025-01-01 00:00:00' AND '2026-12-31 23:59:59'  GROUP BY C.id, C.name, C.email  HAVING COUNT(P.id) >= 3 AND SUM(P.amount) > 100  ORDER BY TotalAnual DESC;
 ```
 
-### ![](images/clipboard-925535246.png)
+### ![](images/clipboard-925535246.png)3.9 Subconsultas y teoría de conjuntos
+
+En las Sub Consultas podemos realizar la teoría de conjuntos aplicadas a las bases de datos:
+
+la mas conocida es el siguiente caso:
+
+Teniendo en cuenta las tablas entre clientes y membresias, muestre los clientes que no le han realizado membresias en una fecha de inicion.
+
+``` sql
+SELECT  *  FROM  clients as C  WHERE  C.id Not In(select M.client_id from memberships as M where M.start_date  BETWEEN  '2025-03-01' and '2026-03-30'); 
+```
+
+![](images/clipboard-3043961135.png)
+
+**Forma 2:**
+
+``` sql
+select *  from clients as C  left join memberships  as M on(C.id = M.client_id and M.start_date  between '2025-03-01' and '2026-03-30')  where  M.client_id is null;
+```
+
+![](images/clipboard-3512686044.png)
