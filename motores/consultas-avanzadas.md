@@ -375,3 +375,25 @@ SELECT C.id, C.name, C.email,  SUM(P.amount) AS TotalAnual,    COUNT(P.id) AS To
 ```
 
 ![](images/clipboard-861531518.png)
+
+### 2.9 Subconsultas y teoría de conjuntos
+
+En las Sub Consultas podemos realizar la teoría de conjuntos aplicadas a las bases de datos:
+
+la mas conocida es el siguiente caso:
+
+Teniendo en cuenta las tablas entre clientes y membresias, muestre los clientes que no le han realizado membresias en una fecha de inicion.
+
+``` sql
+SELECT  *  FROM m clients as C  WHERE  C.id Not In(select M.client_id from memberships as M where M.start_date  BETWEEN  '2025-03-01' and '2026-03-30'); 
+```
+
+![](images/clipboard-4072302102.png)
+
+**Forma 2:**
+
+``` sql
+select *  from clients as C  left join memberships  as M on(C.id = M.client_id and M.start_date  between '2025-03-01' and '2026-03-30')  where  M.client_id is null;
+```
+
+![](images/clipboard-378400353.png)
