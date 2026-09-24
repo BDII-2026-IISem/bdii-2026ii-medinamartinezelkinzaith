@@ -297,7 +297,7 @@ where  M.status = 'expired';
 
 ![](images/clipboard-1391143237.png)
 
-### 1.6 Consultas con filtros condicional LIKE
+### 2.6 Consultas con filtros condicional LIKE
 
 ``` sql
 select *  from clients as C  where C.email like 'm%';
@@ -323,3 +323,19 @@ where  M.status = 'expired' and C.email like 'm%';
 ```
 
 ![](images/clipboard-700465524.png)
+
+### 2.7 Consultas con filtros condicionales BETWEEN
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  FROM clients C JOIN memberships M ON C.id = M.client_id JOIN payments PAY ON M.id = PAY.membership_id JOIN plans PL ON PL.id = M.plan_id WHERE PAY.payment_date BETWEEN '2025-01-15 12:26:02' AND '2026-04-21 13:51:24' ORDER BY PAY.payment_date ASC;
+```
+
+![](images/clipboard-173252118.png)
+
+**Forma 2:**
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status , PAY.payment_date , PL.name  FROM clients C, memberships M, payments PAY, plans PL WHERE C.id = M.client_id   AND M.id = PAY.membership_id   AND PL.id = M.plan_id   AND M.start_date  BETWEEN '2025-01-01' AND '2026-03-30' ORDER BY PAY.payment_date ASC;
+```
+
+![](images/clipboard-3030982433.png)
