@@ -564,3 +564,19 @@ SELECT name,description,status FROM routines  ORDER BY name DESC;
 ```
 
 ![](images/clipboard-167334197.png)
+
+### 4.3 Consultas a múltiples tablas mediante WHERE
+
+``` sql
+SELECT C.name,C.DOCUMENT_TYPE ,C.DOCUMENT_NUMBER   ,m.start_date ,m.end_date ,m.status   FROM   clients C, memberships m  WHERE C.id = m.CLIENT_ID ;
+```
+
+![](images/clipboard-2328330334.png)
+
+### 4.4 Consultas a múltiples tablas mediante JOIN
+
+``` sql
+SELECT C.name, C.email, M.*   FROM clients  C    join memberships  M on( C.id = M.client_id ); 
+```
+
+![](images/clipboard-1749180460.png)
