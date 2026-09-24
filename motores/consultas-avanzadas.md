@@ -724,4 +724,37 @@ HAVING COUNT(P.id) >= 3 AND SUM(P.amount) > 100
 ORDER BY TotalAnual DESC;
 ```
 
-### ![](images/clipboard-199685186.png)
+### ![](images/clipboard-199685186.png)4.9 Subconsultas y teoría de conjuntos
+
+En las Sub Consultas podemos realizar la teoría de conjuntos aplicadas a las bases de datos:
+
+la mas conocida es el siguiente caso:
+
+Teniendo en cuenta las tablas entre clientes y membresias, muestre los clientes que no le han realizado membresias en una fecha de inicion.
+
+``` sql
+SELECT * 
+FROM clients C 
+WHERE C.id NOT IN (SELECT M.client_id FROM memberships M 
+    WHERE M.client_id IS NOT NULL 
+      AND M.start_date BETWEEN DATE '2025-03-01' AND DATE '2026-03-30'
+);
+```
+
+![](images/clipboard-2172634144.png)
+
+**Forma 2:**
+
+``` sql
+SELECT C.* 
+FROM clients C 
+LEFT JOIN memberships M ON C.id = M.client_id 
+ AND M.start_date BETWEEN DATE '2025-03-01' AND DATE '2026-03-30'
+WHERE M.client_id IS NULL;
+```
+
+![](images/clipboard-3697951155.png)
+
+### CONCLUSION
+
+La verdad, la practica de las consultas me sirvió mucho más allá de escribir código, la idea principal fue aprender a **pensar en tablas y relaciones**, dándome cuenta de que un mismo problema —como sacar métricas de clientes o ver quiénes están inactivos— lo puedo resolver de varias formas con joins, agrupaciones o subconsultas.
