@@ -451,3 +451,28 @@ SELECT C.name, C.email,M.start_date ,M.client_id, M.status   FROM clients as C  
 ```
 
 ![](images/clipboard-4054028123.png)
+
+### 3.6 Consultas con filtros condicional LIKE
+
+``` sql
+select *  from clients as C  where C.email like 'm%';
+```
+
+![](images/clipboard-4089174977.png)
+
+**Mostrar todos los correos de los clientes que contengan el dominio gmail**
+
+``` sql
+SELECT id,document_type ,document_number , name,email  
+FROM clients as C  where C.email like concat('%','gmail','%'); 
+```
+
+![](images/clipboard-4238178750.png)
+
+**combinacion del punto anterior y la implementacion de el like**
+
+``` sql
+SELECT C.name, C.email, M.start_date ,M.status   FROM clients as C   join memberships as M on( C.id = M.client_id )  where  M.status = 'expired' and C.email like 'm%'; 
+```
+
+### ![](images/clipboard-2847147233.png)
