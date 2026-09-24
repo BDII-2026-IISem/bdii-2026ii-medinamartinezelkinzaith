@@ -556,3 +556,11 @@ SELECT name,phone,email, status FROM TRAINERS  ;
 ```
 
 ![](images/clipboard-1794633345.png)
+
+### 4.2 Mostrar de forma ordenada (DESC) el nombre de la tabla routines
+
+``` sql
+SELECT name,description,status FROM routines  ORDER BY name DESC;
+```
+
+![](images/clipboard-167334197.png)
