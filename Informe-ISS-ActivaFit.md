@@ -731,3 +731,280 @@ tree apps -I "__pycache__"
 | AC-02-01 | directorios de las apps | árbol de `apps/` (EVI-02-01) | PASS |
 | AC-02-02 | `manage.py check` | EVI-02-04 | PASS |
 | AC-02-03 | este ISS no escribe modelos | revisión de los `models.py` vacíos |  PASS |
+
+## ISS-03 — Custom User antes de la primera migración
+
+Hasta aquí ActivaFit tiene su configuración y sus apps, pero todavía no ha tocado la base de datos. Antes de la primera migración hay que tomar una decisión que no se puede deshacer fácilmente: definir el modelo de usuario propio del sistema. Django trae uno por defecto, pero cambiarlo después de migrar obliga a borrar tablas. Por eso, en esta unidad se creó el usuario personalizado de ActivaFit sobre `django.contrib.auth`, se declaró en la configuración y solo entonces se hizo la primera migración. Así, las credenciales del sistema quedan en una tabla propia (`users`), separada de los clientes del gimnasio.
+
+**Objetivo**
+
+Definir el usuario de ActivaFit sobre `django.contrib.auth` y fijar `AUTH_USER_MODEL` antes de migrar.
+
+**Requisitos**
+
+- ISS-02 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+- Decisión explícita entre `AbstractUser` y `AbstractBaseUser`: se eligió `AbstractUser`.
+
+### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+Antes de ejecutar los comandos se activó el entorno y se confirmó que `python` apuntara a `.venv`.
+
+``` bash
+source .venv/bin/activate which python 
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Crear el paquete `apps/common` con `RecordStatus`**
+
+El estado "activo / inactivo" lo usarán el usuario y, desde el ISS-04, las tablas del negocio. Por eso se guardó en un paquete compartido. `apps/common` no es una app: no se registra en `INSTALLED_APPS` ni se crea con `startapp`.
+
+Archivo `apps/common/status.py`:
+
+```         
+mkdir -p apps/common
+cat > apps/common/__init__.py <<'EOF'
+EOF
+cat > apps/common/status.py <<'EOF'
+
+from django.db import models
+
+
+class RecordStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    INACTIVE = "inactive", "Inactive"
+EOF
+```
+
+![](images/clipboard-2245701635.png)
+
+![](images/clipboard-1235443289.png)
+
+**Paso 2. Crear la app `security` con la CLI**
+
+Como el directorio destino debe existir, primero se crea.
+
+```         
+mkdir -p apps/security
+python manage.py startapp security apps/security 
+```
+
+![](images/clipboard-1373332445.png)
+
+Luego se parchea `apps/security/apps.py`, igual que en las demás apps. Se busca la línea `name = "security"` y se reemplaza por estas dos:
+
+```         
+    name = "apps.security"     label = "security" 
+```
+
+![](images/clipboard-3892071475.png)
+
+**Paso 3. Escribir el modelo de usuario**
+
+El archivo `apps/security/models.py` ya existe y solo tiene un comentario. Se reemplaza todo su contenido por esto. En este ISS contiene únicamente el usuario; los demás modelos de seguridad se agregan después, en la fase de autenticación.
+
+``` python
+from django.contrib.auth.models import AbstractUser, UserManager
+from django.db import models
+
+from apps.common.status import RecordStatus
+
+
+class ActivaFitUserManager(UserManager):
+    def create_user(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("status", RecordStatus.INACTIVE)
+        return super().create_user(username, email, password, **extra_fields)
+
+    def create_superuser(self, username, email=None, password=None, **extra_fields):
+        extra_fields.setdefault("status", RecordStatus.ACTIVE)
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+        return super().create_superuser(username, email, password, **extra_fields)
+
+
+class User(AbstractUser):
+    email = models.EmailField("correo electrónico", max_length=150, unique=True)
+    status = models.CharField(
+        max_length=8,
+        choices=RecordStatus.choices,
+        default=RecordStatus.INACTIVE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ActivaFitUserManager()
+
+    class Meta:
+        db_table = "users"
+        verbose_name = "usuario"
+        verbose_name_plural = "usuarios"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="users_status_valid",
+            )
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        self.is_active = self.status == RecordStatus.ACTIVE
+        super().save(*args, **kwargs)
+```
+
+`create_user` deja `status` en `inactive` si nadie lo indica. `create_superuser` lo fuerza a `active`, para que `save()` no desactive al superusuario.
+
+![](images/clipboard-2499441210.png)
+
+**Paso 4. Registrar la app y fijar `AUTH_USER_MODEL`**
+
+En `config/settings/__init__.py`, la app de seguridad va delante de las de negocio. Se agrega esta línea justo encima de `"apps.client.apps.ClientConfig",`:
+
+```         
+    "apps.security.apps.SecurityConfig", 
+```
+
+Y debajo de la línea `DATABASES = database_from_environ(os.environ)` se agrega:
+
+```         
+AUTH_USER_MODEL = "security.User" 
+```
+
+![](images/clipboard-1291723589.png)
+
+![](images/clipboard-53755586.png)
+
+**Paso 5. Escribir el test de selección del motor**
+
+El test prometido en el ISS-01 reemplaza el `tests.py` vacío que dejó `startapp`. Todavía no hay login, así que solo valida la selección del motor. Archivo `apps/security/tests.py`:
+
+``` python
+from django.core.exceptions import ImproperlyConfigured
+from django.test import SimpleTestCase
+
+from config.database import database_from_environ
+
+
+class DatabaseSelectionTests(SimpleTestCase):
+    def _env(self, engine):
+        return {
+            "DB_ENGINE": engine,
+            "POSTGRES_DB": "activafit",
+            "POSTGRES_USER": "activafit",
+            "POSTGRES_PASSWORD": "activafit",
+            "POSTGRES_HOST": "127.0.0.1",
+            "POSTGRES_PORT": "5432",
+            "MYSQL_DB": "activafit",
+            "MYSQL_USER": "activafit",
+            "MYSQL_PASSWORD": "activafit",
+            "MYSQL_HOST": "127.0.0.1",
+            "MYSQL_PORT": "3306",
+            "MSSQL_DB": "activafit",
+            "MSSQL_USER": "activafit",
+            "MSSQL_PASSWORD": "activafit",
+            "MSSQL_HOST": "127.0.0.1",
+            "MSSQL_PORT": "1433",
+            "ORACLE_DB": "activafit",
+            "ORACLE_USER": "activafit",
+            "ORACLE_PASSWORD": "activafit",
+            "ORACLE_HOST": "127.0.0.1",
+            "ORACLE_PORT": "1521",
+            "ORACLE_SERVICE_NAME": "FREEPDB1",
+        }
+
+    def test_postgresql_engine(self):
+        config = database_from_environ(self._env("postgresql"))
+        self.assertEqual(config["default"]["ENGINE"], "django.db.backends.postgresql")
+
+    def test_mysql_engine(self):
+        config = database_from_environ(self._env("mysql"))
+        self.assertEqual(config["default"]["ENGINE"], "django.db.backends.mysql")
+        self.assertEqual(config["default"]["OPTIONS"]["charset"], "utf8mb4")
+
+    def test_mssql_engine(self):
+        config = database_from_environ(self._env("mssql"))
+        self.assertEqual(config["default"]["ENGINE"], "mssql")
+
+    def test_oracle_uses_service_name(self):
+        config = database_from_environ(self._env("oracle"))
+        self.assertIn("SERVICE_NAME=FREEPDB1", config["default"]["NAME"])
+        self.assertEqual(config["default"]["PORT"], "")
+
+    def test_invalid_engine(self):
+        with self.assertRaises(ImproperlyConfigured):
+            database_from_environ({"DB_ENGINE": "sqlite"})
+
+    def test_missing_variable(self):
+        env = self._env("postgresql")
+        env["POSTGRES_DB"] = ""
+        with self.assertRaises(ImproperlyConfigured):
+            database_from_environ(env)
+```
+
+![](images/clipboard-761348764.png)
+
+**Paso 6. Generar la migración, migrar y probar**
+
+Ahora sí se migra. La CLI escribe la migración; no se copia a mano.
+
+```         
+python manage.py makemigrations security
+python manage.py migrate
+python manage.py test apps.security.tests.DatabaseSelectionTests 
+```
+
+![](images/clipboard-3001923046.png)
+
+![](images/clipboard-975977985.png)
+
+Al ejecutar `createsuperuser`, Django te pide:
+
+- **Username**
+
+- **Email:** es obligatorio y único en ActivaFit, porque lo definimos así en el modelo.
+
+- **Password:** se escribe dos veces y no se ve en pantalla.
+
+![](images/clipboard-2636793564.png)
+
+### Explicación
+
+Se prefirió `AbstractUser` sobre `AbstractBaseUser` porque ya resuelve el hash de contraseñas, los validadores, `set_password()`, `check_password()` y el admin. Reconstruir eso a mano sería rehacer el sistema de contraseñas.
+
+El campo `status` manda sobre `is_active`. La columna `is_active` se conserva porque DRF y SimpleJWT deciden con ella si el usuario puede autenticarse. Los clientes del gimnasio (tabla `clients`) no tienen contraseña: no son usuarios del sistema
+
+## Criterios de aceptación
+
+- AC-03-01: `AUTH_USER_MODEL` apunta a `security.User`.
+
+- AC-03-02: `Client` no tiene password.
+
+- AC-03-03: un usuario `inactive` no inicia sesión.
+
+- AC-03-04: una clave incorrecta responde 401 y la correcta no devuelve el hash.
+
+## Verificación
+
+`AuthFlowTests`.
+
+## Evidencias
+
+- EVI-03-01: migración `security.0001_initial` aplicada en MySQL.
+
+- EVI-03-02: login por username y por email PASS.
+
+## GATE
+
+| **AC**   | **Verificación** | **Evidencia**                 | **Resultado** |
+|:---------|:-----------------|:------------------------------|:--------------|
+| AC-03-01 | settings         | `config/settings/__init__.py` | PASS          |
+| AC-03-02 | modelo Client    | sin campo password            | PASS          |
+| AC-03-03 | usuario inactivo | test 401                      | PASS          |
+| AC-03-04 | `check_password` | test de login                 | PASS          |
+
+.

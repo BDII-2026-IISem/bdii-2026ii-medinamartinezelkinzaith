@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "apps.measurement.apps.MeasurementConfig",
     "apps.routine.apps.RoutineConfig",
     "apps.membership.apps.MembershipConfig",
+    "apps.security.apps.SecurityConfig",
 ]
 
 
@@ -76,7 +77,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
 DATABASES = database_from_environ(os.environ)
-
+AUTH_USER_MODEL = "security.User" 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
