@@ -587,3 +587,147 @@ Con esto, ActivaFit quedó configurado para cambiar de motor con una sola variab
 | AC-01-04 | aserción `SERVICE_NAME` | EVI-01-06 |  PASS     |
 
 ------------------------------------------------------------------------
+
+## ISS-02 — Apps de ActivaFit
+
+### Narrativa
+
+Con el motor de base de datos configurado, ActivaFit necesita un lugar donde vivirá su lógica. En Django ese lugar son las apps: cada una agrupa un dominio del negocio. En esta unidad se crearon las apps del gimnasio dentro de un paquete `apps/`, para que la raíz del proyecto no se llene de carpetas sueltas. Todavía no se escribe ningún modelo: solo se levanta la estructura y se registra en la configuración.
+
+### Objetivo
+
+Crear las apps de negocio de ActivaFit con la CLI de Django y registrarlas dentro del paquete `apps`.
+
+### Requisitos
+
+- ISS-01 superado.
+
+- Terminal con el entorno virtual (.venv) activo.
+
+- Todavía no se escriben modelos. El Custom User del ISS-03 debe existir antes de ejecutar la primera migración.
+
+### Construcción
+
+Antes de ejecutar cualquier comando de este ISS se activó el entorno virtual y se confirmó que python apuntara a .venv. Así los comandos de Django usan las librerías instaladas en el proyecto y no las del sistema.
+
+``` bash
+    source .venv/bin/activate
+    which python
+```
+
+![](images/clipboard-117842089.png)
+
+**1. Crear los directorios y las apps con `startapp`**
+
+`startapp` exige que el directorio destino ya exista. Por eso primero se crean las carpetas y luego se genera cada app. No se copian `models.py`, `admin.py` ni `views.py` a mano: la CLI los deja listos. El archivo `urls.py` no lo crea; aparecerá cuando haya endpoints.
+
+``` bash
+mkdir -p apps/client apps/trainer apps/plan apps/membership apps/routine apps/measurement  
+python manage.py startapp client apps/client 
+python manage.py startapp trainer apps/trainer 
+python manage.py startapp plan apps/plan 
+python manage.py startapp membership apps/membership  
+python manage.py startapp routine apps/routine 
+python manage.py startapp measurement apps/measurement 
+```
+
+![](images/clipboard-1418026366.png)![](images/clipboard-2951435710.png)
+
+**2. Convertir `apps` en paquete**
+
+Se creó `apps/__init__.py`, vacío, para que Python trate la carpeta `apps` como un paquete.
+
+``` bash
+mkdir -p apps cat > apps/__init__.py <<'EOF' EOF 
+```
+
+![](images/clipboard-3437556076.png)
+
+![](images/clipboard-3248186314.png)
+
+**3. Parchear el `apps.py` de cada app**
+
+Cada `apps.py` ya existe, generado por `startapp`. Como las apps viven dentro de `apps/`, hay que indicarle a Django la ruta completa del paquete. Se mantiene el `label` corto para que las migraciones no arrastren el prefijo `apps.`.
+
+``` bas
+ARCHIVO: apps/client/apps.py  UBICAR:     name = "client"  REEMPLAZAR POR:     name = "apps.client"     label = "client" 
+```
+
+El mismo parche se repite en las demás apps:
+
+| Archivo                    | `name`             | `label`       |
+|----------------------------|--------------------|---------------|
+| `apps/trainer/apps.py`     | `apps.trainer`     | `trainer`     |
+| `apps/plan/apps.py`        | `apps.plan`        | `plan`        |
+| `apps/membership/apps.py`  | `apps.membership`  | `membership`  |
+| `apps/routine/apps.py`     | `apps.routine`     | `routine`     |
+| `apps/measurement/apps.py` | `apps.measurement` | `measurement` |
+
+: La clase de cada archivo conserva su nombre (`ClientConfig`, `TrainerConfig`, `PlanConfig`, `MembershipConfig`, `RoutineConfig`, `MeasurementConfig`).
+
+**4. Registrar las apps en `config/settings/__init__.py`**
+
+El archivo ya existe. Se agregan las apps al final de `INSTALLED_APPS`, todavía sin la app `security`, que llega en el ISS-03.
+
+text
+
+```         
+ARCHIVO: config/settings/__init__.py
+
+DEBAJO DE:
+    "django.contrib.staticfiles",
+
+AGREGAR:
+    "apps.client.apps.ClientConfig",
+    "apps.trainer.apps.TrainerConfig",
+    "apps.plan.apps.PlanConfig",
+    "apps.membership.apps.MembershipConfig",
+    "apps.routine.apps.RoutineConfig",
+    "apps.measurement.apps.MeasurementConfig",
+```
+
+![](images/clipboard-2857987097.png)
+
+#### Explicación
+
+Django supone que una app está en la raíz del proyecto. Como en ActivaFit viven dentro de `apps/`, el `AppConfig.name` debe ser la ruta completa, por ejemplo `apps.client`. El `label` se deja en `client` para que las migraciones no arrastren el nombre del paquete. Cada app conserva un solo nombre, igual al dominio que representa.
+
+``` text
+apps/
+├── client/        clientes del gimnasio
+├── trainer/       entrenadores
+├── plan/          planes de membresía
+├── membership/    membresías, pagos y asistencias
+├── routine/       ejercicios, rutinas y rutina-ejercicio
+└── measurement/   medidas corporales
+```
+
+#### Criterios de aceptación
+
+- AC-02-01: las apps fueron creadas con `startapp`.
+
+- AC-02-02: `python manage.py check` no reporta apps mal registradas.
+
+- AC-02-03: en este ISS todavía no hay modelos de negocio.
+
+### Verificación
+
+```         
+python manage.py check 
+```
+
+Para el GATE, además, puedes mostrar el árbol de las apps:
+
+```         
+tree apps -I "__pycache__" 
+```
+
+![](images/clipboard-2535765618.png)
+
+### GATE
+
+| AC | Verificación | Evidencia | Resultado |
+|----|----|----|----|
+| AC-02-01 | directorios de las apps | árbol de `apps/` (EVI-02-01) | PASS |
+| AC-02-02 | `manage.py check` | EVI-02-04 | PASS |
+| AC-02-03 | este ISS no escribe modelos | revisión de los `models.py` vacíos |  PASS |

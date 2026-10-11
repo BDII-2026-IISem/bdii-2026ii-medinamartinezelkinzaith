@@ -36,10 +36,12 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "apps.membership.apps.MembershipConfig",
-    "apps.routine.apps.RoutineConfig",
+    "apps.client.apps.ClientConfig",
     "apps.trainer.apps.TrainerConfig",
     "apps.plan.apps.PlanConfig",
+    "apps.measurement.apps.MeasurementConfig",
+    "apps.routine.apps.RoutineConfig",
+    "apps.membership.apps.MembershipConfig",
 ]
 
 
