@@ -2565,3 +2565,473 @@ Las pruebas de `ClientApiTests`, con el comando del Paso 5.
 -  **AC-08-03:** DELETE lógico, la fila permanece inactiva. **PASS**.
 
 -  **AC-08-04:** nombre inválido responde 400. **PASS**.
+
+### ISS-09 — Catálogo y seguimiento con ModelViewSet
+
+**Narrativa**
+
+Con el CRUD de clientes funcionando, ActivaFit extiende el mismo patrón al resto de sus recursos homogéneos: planes, entrenadores, ejercicios, rutinas, ejercicios de rutina y medidas. Para no copiar `perform_destroy` y el filtro de estado en cada vista, se extrajo una vista base compartida, `CatalogViewSet`, que sigue siendo un `ModelViewSet`. Las medidas son la excepción: su tabla no tiene estado, así que no hay baja lógica posible y su vista usa el borrado real. El acceso sigue siendo abierto en esta fase; la seguridad llega en unidades posteriores.
+
+**Objetivo**
+
+Publicar los catálogos y el seguimiento de ActivaFit con el mismo criterio de CRUD homogéneo.
+
+**Requisitos**
+
+-  ISS-08 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+**Paso 1. Crear la vista base compartida**
+
+`apps/common` es un paquete, no una app, así que el archivo `views.py` es nuevo. Contiene la vista base con baja lógica y filtro `?status=`. Archivo `apps/common/views.py`:
+
+``` python
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
+
+from apps.common.status import RecordStatus
+
+
+class CatalogViewSet(viewsets.ModelViewSet):
+    permission_classes = [AllowAny]
+    lookup_value_converter = "int"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        status_value = self.request.query_params.get("status")
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        return queryset
+
+    def perform_destroy(self, instance):
+        instance.status = RecordStatus.INACTIVE
+        instance.save(update_fields=["status", "updated_at"])
+```
+
+![](images/clipboard-3835384417.png)
+
+**Paso 2. Escribir las vistas de cada app**
+
+Los archivos `views.py` ya existen (los creó `startapp`) y se reescriben enteros. Las que tienen estado heredan de `CatalogViewSet`.
+
+Archivo `apps/plan/views.py`:
+
+``` python
+from apps.common.views import CatalogViewSet
+from apps.plan.models import Plan
+from apps.plan.serializers import PlanSerializer
+
+
+class PlanViewSet(CatalogViewSet):
+    queryset = Plan.objects.all()
+    serializer_class = PlanSerializer
+```
+
+![](images/clipboard-2403227821.png)
+
+Archivo `apps/trainer/views.py`:
+
+``` python
+from apps.common.views import CatalogViewSet
+from apps.trainer.models import Trainer
+from apps.trainer.serializers import TrainerSerializer
+
+
+class TrainerViewSet(CatalogViewSet):
+    queryset = Trainer.objects.all()
+    serializer_class = TrainerSerializer
+```
+
+![](images/clipboard-3484010475.png)
+
+Archivo `apps/routine/views.py`:
+
+``` python
+from apps.common.views import CatalogViewSet
+from apps.routine.models import Exercise, Routine, RoutineExercise
+from apps.routine.serializers import (
+    ExerciseSerializer,
+    RoutineExerciseSerializer,
+    RoutineSerializer,
+)
+
+
+class ExerciseViewSet(CatalogViewSet):
+    queryset = Exercise.objects.all()
+    serializer_class = ExerciseSerializer
+
+
+class RoutineViewSet(CatalogViewSet):
+    queryset = Routine.objects.select_related("trainer", "client")
+    serializer_class = RoutineSerializer
+
+
+class RoutineExerciseViewSet(CatalogViewSet):
+    queryset = RoutineExercise.objects.select_related("routine", "exercise")
+    serializer_class = RoutineExerciseSerializer
+```
+
+![](images/clipboard-1067957080.png)
+
+Archivo `apps/measurement/views.py`. Esta vista no hereda de `CatalogViewSet`, porque `measurements` no tiene `status`: no hay filtro por estado ni baja lógica, y el DELETE elimina la fila.
+
+``` python
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
+
+from apps.measurement.models import Measurement
+from apps.measurement.serializers import MeasurementSerializer
+
+
+class MeasurementViewSet(viewsets.ModelViewSet):
+    queryset = Measurement.objects.select_related("client", "trainer")
+    serializer_class = MeasurementSerializer
+    permission_classes = [AllowAny]
+    lookup_value_converter = "int"
+```
+
+![](images/clipboard-1639043875.png)
+
+**Paso 3. Crear las rutas de cada app**
+
+Archivo `apps/plan/urls.py`:
+
+``` python
+from rest_framework.routers import SimpleRouter
+
+from apps.plan.views import PlanViewSet
+
+router = SimpleRouter(use_regex_path=False)
+router.register("plans", PlanViewSet, basename="plan")
+
+urlpatterns = router.urls
+```
+
+![](images/clipboard-3694826869.png)
+
+Archivo `apps/trainer/urls.py`:
+
+``` python
+from rest_framework.routers import SimpleRouter
+
+from apps.trainer.views import TrainerViewSet
+
+router = SimpleRouter(use_regex_path=False)
+router.register("trainers", TrainerViewSet, basename="trainer")
+
+urlpatterns = router.urls
+```
+
+![](images/clipboard-569417487.png)
+
+Archivo `apps/routine/urls.py`:
+
+``` python
+from rest_framework.routers import SimpleRouter
+
+from apps.routine.views import ExerciseViewSet, RoutineExerciseViewSet, RoutineViewSet
+
+router = SimpleRouter(use_regex_path=False)
+router.register("exercises", ExerciseViewSet, basename="exercise")
+router.register("routines", RoutineViewSet, basename="routine")
+router.register("routine-exercises", RoutineExerciseViewSet, basename="routine-exercise")
+
+urlpatterns = router.urls
+```
+
+![](images/clipboard-2865526007.png)
+
+Archivo `apps/measurement/urls.py`:
+
+``` python
+from rest_framework.routers import SimpleRouter
+
+from apps.measurement.views import MeasurementViewSet
+
+router = SimpleRouter(use_regex_path=False)
+router.register("measurements", MeasurementViewSet, basename="measurement")
+
+urlpatterns = router.urls
+```
+
+![](images/clipboard-1924144893.png)
+
+**Paso 4. Conectar las rutas al proyecto**
+
+En `config/urls.py`, debajo de la línea `path("api/", include("apps.client.urls")),`, agrega:
+
+``` python
+    path("api/", include("apps.plan.urls")),
+    path("api/", include("apps.trainer.urls")),
+    path("api/", include("apps.routine.urls")),
+    path("api/", include("apps.measurement.urls")),
+```
+
+Es el mismo mecanismo que con clientes: el proyecto solo conoce el prefijo `api/` y cede el resto a cada app.
+
+![](images/clipboard-1263107558.png)
+
+**Paso 5. Escribir las pruebas**
+
+Los archivos `tests.py` ya existen y se reescriben. El acceso es abierto, sin token. Los datos de apoyo (cliente, entrenador) se crean con el ORM en `setUp`.
+
+Archivo `apps/plan/tests.py`:
+
+``` python
+from rest_framework.test import APITestCase
+
+from apps.common.status import RecordStatus
+from apps.plan.models import Plan
+
+
+class PlanApiTests(APITestCase):
+    def test_crud_and_soft_delete(self):
+        created = self.client.post(
+            "/api/plans/",
+            {"name": "Plan Mensual", "description": "Acceso mensual"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.data["status"], RecordStatus.INACTIVE)
+        pk = created.data["id"]
+        self.assertEqual(self.client.get("/api/plans/").status_code, 200)
+        detail = self.client.get(f"/api/plans/{pk}/")
+        self.assertEqual(detail.data["name"], "Plan Mensual")
+        updated = self.client.patch(f"/api/plans/{pk}/", {"status": "active"}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        deleted = self.client.delete(f"/api/plans/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Plan.objects.get(pk=pk).status, RecordStatus.INACTIVE)
+
+    def test_duplicate_name(self):
+        payload = {"name": "Plan Trimestral"}
+        first = self.client.post("/api/plans/", payload, format="json")
+        second = self.client.post("/api/plans/", payload, format="json")
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(Plan.objects.count(), 1)
+```
+
+![](images/clipboard-3096246508.png)
+
+Archivo `apps/trainer/tests.py`:
+
+``` python
+from rest_framework.test import APITestCase
+
+from apps.common.status import RecordStatus
+from apps.trainer.models import Trainer
+
+
+class TrainerApiTests(APITestCase):
+    def test_crud_and_soft_delete(self):
+        created = self.client.post(
+            "/api/trainers/",
+            {"name": "Carlos Ruiz", "email": "Carlos@Example.com", "specialty": "Fuerza"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.data["status"], RecordStatus.INACTIVE)
+        self.assertEqual(created.data["email"], "carlos@example.com")
+        pk = created.data["id"]
+        detail = self.client.get(f"/api/trainers/{pk}/")
+        self.assertEqual(detail.status_code, 200)
+        updated = self.client.patch(f"/api/trainers/{pk}/", {"status": "active"}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        deleted = self.client.delete(f"/api/trainers/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Trainer.objects.get(pk=pk).status, RecordStatus.INACTIVE)
+```
+
+![](images/clipboard-1321713073.png)
+
+Archivo `apps/routine/tests.py`:
+
+``` python
+from django.db.models.deletion import RestrictedError
+from rest_framework.test import APITestCase
+
+from apps.client.models import Client
+from apps.common.status import RecordStatus
+from apps.routine.models import Exercise
+from apps.trainer.models import Trainer
+
+
+class RoutineApiTests(APITestCase):
+    def setUp(self):
+        self.gym_client = Client.objects.create(
+            document_type="CC",
+            document_number="1234567890",
+            name="Cliente Prueba",
+            email="cliente@example.com",
+        )
+        self.trainer = Trainer.objects.create(name="Entrenador Prueba")
+
+    def test_exercise_crud_and_duplicate(self):
+        payload = {"name": "Sentadilla", "muscleGroup": "Piernas"}
+        created = self.client.post("/api/exercises/", payload, format="json")
+        self.assertEqual(created.status_code, 201)
+        self.assertEqual(created.data["status"], RecordStatus.INACTIVE)
+        duplicate = self.client.post("/api/exercises/", payload, format="json")
+        self.assertEqual(duplicate.status_code, 400)
+        pk = created.data["id"]
+        deleted = self.client.delete(f"/api/exercises/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Exercise.objects.get(pk=pk).status, RecordStatus.INACTIVE)
+
+    def test_routine_with_lines_and_restriction(self):
+        routine = self.client.post(
+            "/api/routines/",
+            {
+                "trainerId": self.trainer.id,
+                "clientId": self.gym_client.id,
+                "name": "Rutina A",
+            },
+            format="json",
+        )
+        self.assertEqual(routine.status_code, 201)
+        self.assertEqual(routine.data["status"], RecordStatus.INACTIVE)
+        exercise = Exercise.objects.create(name="Press de banca", muscle_group="Pecho")
+        line = self.client.post(
+            "/api/routine-exercises/",
+            {
+                "routineId": routine.data["id"],
+                "exerciseId": exercise.id,
+                "sets": 3,
+                "repetitions": 12,
+                "name": "Press de banca",
+                "muscleGroup": "Pecho",
+            },
+            format="json",
+        )
+        self.assertEqual(line.status_code, 201)
+        self.assertEqual(line.data["sets"], 3)
+        with self.assertRaises(RestrictedError):
+            self.trainer.delete()
+
+    def test_invalid_foreign_key(self):
+        response = self.client.post(
+            "/api/routines/",
+            {"trainerId": 9999, "clientId": self.gym_client.id, "name": "Rutina B"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+```
+
+![](images/clipboard-1217817558.png)
+
+Archivo `apps/measurement/tests.py`:
+
+``` python
+from rest_framework.test import APITestCase
+
+from apps.client.models import Client
+from apps.measurement.models import Measurement
+from apps.trainer.models import Trainer
+
+
+class MeasurementApiTests(APITestCase):
+    def setUp(self):
+        self.gym_client = Client.objects.create(
+            document_type="CC",
+            document_number="1234567890",
+            name="Cliente Prueba",
+            email="cliente@example.com",
+        )
+        self.trainer = Trainer.objects.create(name="Entrenador Prueba")
+
+    def test_crud_and_hard_delete(self):
+        created = self.client.post(
+            "/api/measurements/",
+            {
+                "clientId": self.gym_client.id,
+                "trainerId": self.trainer.id,
+                "weight": "70.50",
+                "height": "175.00",
+                "bodyFat": "18.50",
+                "bmi": "23.00",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+        self.assertNotIn("status", created.data)
+        pk = created.data["id"]
+        detail = self.client.get(f"/api/measurements/{pk}/")
+        self.assertEqual(detail.status_code, 200)
+        updated = self.client.patch(f"/api/measurements/{pk}/", {"weight": "69.00"}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data["weight"], "69.00")
+        deleted = self.client.delete(f"/api/measurements/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Measurement.objects.count(), 0)
+```
+
+![](images/clipboard-2543189504.png)
+
+**Paso 6. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.plan apps.trainer apps.routine apps.measurement
+```
+
+![](images/clipboard-482149800.png)
+
+Debe terminar con `Ran 7 tests` y `OK`. Como en el ISS-08, Django crea una base temporal con el prefijo `test_`; si tu usuario de base de datos no puede crear bases, la prueba fallará por permisos.
+
+#### Explicación
+
+No se repite la discusión del ISS-08: estos recursos son del mismo tipo, CRUD homogéneo. Extraer `CatalogViewSet` evita copiar `perform_destroy` y el filtro en cada app, y no inventa una capa nueva: sigue siendo un `ModelViewSet`.
+
+Las vistas con estado se desactivan en lugar de borrarse, para conservar el historial: un entrenador o un plan inactivo no desaparece de las rutinas y membresías que lo usan. La excepción son las medidas: su tabla no tiene `status`, así que su vista usa el borrado real de DRF, y no hay nada que dependa de ellas.
+
+Los serializers de relaciones (`RoutineSerializer`, `RoutineExerciseSerializer`, `MeasurementSerializer`) exigen sus identificadores (`trainerId`, `clientId`, `routineId`, `exerciseId`). Si apuntan a un registro que no existe, DRF responde 400 antes de tocar la base. Y como las claves foráneas usan `RESTRICT`, no se puede borrar un entrenador mientras tenga rutinas.
+
+```         
+/api/plans/  /api/trainers/  /api/exercises/
+/api/routines/  /api/routine-exercises/  /api/measurements/
+        │
+        ▼
+ CatalogViewSet (o ModelViewSet en measurements)
+        │
+        ▼
+ Serializer de cada recurso
+        │
+        ▼
+ plans · trainers · exercises · routines · routine_exercises · measurements
+```
+
+![](images/clipboard-3000049576.png)
+
+![](images/clipboard-905568021.png)
+
+![](images/clipboard-1915694349.png)
+
+![](images/clipboard-294191278.png)
+
+#### Cómo probarlo
+
+La prueba es de capa HTTP, con acceso abierto y sin `runserver`. Los datos de apoyo se crean con el ORM en `setUp`, sin pasar por la API.
+
+```         
+python manage.py test apps.plan apps.trainer apps.routine apps.measurement
+        │
+        ▼
+PlanApiTests         POST · GET · PATCH · DELETE lógico · nombre duplicado = 400
+TrainerApiTests      POST · email en minúsculas · PATCH · DELETE lógico
+RoutineApiTests      ejercicios · rutina con trainerId/clientId · línea de rutina
+                     · clave inexistente = 400 · borrar entrenador con rutinas = RestrictedError
+MeasurementApiTests  POST · GET · PATCH · DELETE real (204 y la fila desaparece)
+```
+
+![](images/clipboard-2142602300.png)
+
+Las membresías vigentes (ISS-10) y el registro de membresías (ISS-11) se prueban en sus propios ISS.
