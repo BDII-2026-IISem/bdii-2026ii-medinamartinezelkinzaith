@@ -2245,3 +2245,323 @@ c.delete()
 -  **AC-07-02:** el correo se guarda en minúsculas. **PASS**.
 
 -  **AC-07-03:** `trainerName` y `clientName` aparecen en la rutina. **PASS**.
+
+### ISS-08 — Client con ModelViewSet
+
+**Narrativa**
+
+Con los serializers listos, llega el primer endpoint real de ActivaFit: el CRUD de clientes. En lugar de escribir a mano cada operación, se usó `ModelViewSet`, la vista de DRF que ya sabe listar, crear, consultar, actualizar y borrar. El único comportamiento propio es que borrar un cliente no elimina la fila: la desactiva, para conservar el historial de membresías, pagos y asistencias que dependen de él. Como es el primer endpoint, en esta unidad también se creó el `urls.py` de la app y se conectó al proyecto bajo el prefijo `/api/`. Por ahora la API es abierta, sin autenticación; la seguridad llega en unidades posteriores.
+
+**Objetivo**
+
+Publicar el CRUD de clientes con el tipo de vista que corresponde a un recurso homogéneo.
+
+**Requisitos**
+
+-  ISS-07 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+En esta fase el CRUD se publica sin JWT: `permission_classes = [AllowAny]`. Más adelante se reemplaza por `IsAuthenticated` y `HasResourceAccess`. No se importa nada de `apps.security` todavía.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Escribir la vista**
+
+El archivo `apps/client/views.py` ya existe. Se reescribe entero. La baja lógica se implementa con `perform_destroy`, que es el punto de extensión de DRF; no se reescribe `delete()`.
+
+``` python
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny
+
+from apps.client.models import Client
+from apps.client.serializers import ClientSerializer
+from apps.common.status import RecordStatus
+
+
+class ClientViewSet(viewsets.ModelViewSet):
+    queryset = Client.objects.all()
+    serializer_class = ClientSerializer
+    permission_classes = [AllowAny]
+    lookup_value_converter = "int"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        status_value = self.request.query_params.get("status")
+        if status_value:
+            queryset = queryset.filter(status=status_value)
+        return queryset
+
+    def perform_destroy(self, instance):
+        instance.status = RecordStatus.INACTIVE
+        instance.save(update_fields=["status", "updated_at"])
+```
+
+![](images/clipboard-3641985953.png)
+
+**Paso 2. Crear las rutas de la app**
+
+Las apps no traen `urls.py`. Se crea ahora porque es el primer endpoint. Archivo `apps/client/urls.py`:
+
+``` python
+from rest_framework.routers import SimpleRouter
+
+from apps.client.views import ClientViewSet
+
+router = SimpleRouter(use_regex_path=False)
+router.register("clients", ClientViewSet, basename="client")
+
+urlpatterns = router.urls
+```
+
+![](images/clipboard-1746047422.png)
+
+**Paso 3. Conectar las rutas al proyecto**
+
+El archivo `config/urls.py` ya existe; no se regenera, se edita. Se busca esta línea:
+
+```         
+from django.urls import path
+```
+
+Y se reemplaza por:
+
+```         
+from django.urls import include, path
+```
+
+Debajo de la línea `path("admin/", admin.site.urls),` se agrega:
+
+``` python
+    path("api/", include("apps.client.urls")),
+```
+
+![](images/clipboard-2969320724.png)
+
+**Paso 4. Escribir las pruebas**
+
+El archivo `apps/client/tests.py` también existe y se reescribe. Las pruebas son de acceso abierto: no hay usuario ni token. Cada cliente lleva su propio correo y su propio documento, porque ambos son únicos.
+
+``` python
+import json
+
+from rest_framework import status
+from rest_framework.test import APITestCase
+
+from apps.client.models import Client
+from apps.common.status import RecordStatus
+
+
+class ClientApiTests(APITestCase):
+    def test_create_defaults_and_persists(self):
+        response = self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "1234567890",
+                "name": "María García",
+                "email": "Maria@Example.com",
+                "phone": "3001234567",
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["status"], RecordStatus.INACTIVE)
+        self.assertEqual(response.data["email"], "maria@example.com")
+        wire = json.loads(response.content)
+        self.assertIn("createdAt", wire)
+        self.assertNotIn("created_at", wire)
+        stored = Client.objects.get(pk=response.data["id"])
+        self.assertEqual(stored.name, "María García")
+
+    def test_invalid_name_and_duplicate_email(self):
+        invalid = self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "1111111111",
+                "name": "A",
+                "email": "a@example.com",
+            },
+            format="json",
+        )
+        self.assertEqual(invalid.status_code, status.HTTP_400_BAD_REQUEST)
+        self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "2222222222",
+                "name": "Ana Ruiz",
+                "email": "ana@example.com",
+            },
+            format="json",
+        )
+        duplicate = self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "3333333333",
+                "name": "Otra Ana",
+                "email": "ana@example.com",
+            },
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_soft_delete_keeps_the_row(self):
+        created = self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "4444444444",
+                "name": "Pedro León",
+                "email": "pedro@example.com",
+            },
+            format="json",
+        )
+        deleted = self.client.delete(f"/api/clients/{created.data['id']}/")
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        stored = Client.objects.get(pk=created.data["id"])
+        self.assertEqual(stored.status, RecordStatus.INACTIVE)
+        self.assertEqual(Client.objects.count(), 1)
+
+    def test_list_retrieve_and_update(self):
+        created = self.client.post(
+            "/api/clients/",
+            {
+                "document_type": "CC",
+                "document_number": "5555555555",
+                "name": "Luisa Mora",
+                "email": "luisa@example.com",
+                "phone": "111",
+            },
+            format="json",
+        )
+        pk = created.data["id"]
+        listed = self.client.get("/api/clients/")
+        self.assertEqual(listed.status_code, status.HTTP_200_OK)
+        detail = self.client.get(f"/api/clients/{pk}/")
+        self.assertEqual(detail.status_code, status.HTTP_200_OK)
+        self.assertEqual(detail.data["name"], "Luisa Mora")
+        updated = self.client.patch(
+            f"/api/clients/{pk}/",
+            {"phone": "222", "status": "active"},
+            format="json",
+        )
+        self.assertEqual(updated.status_code, status.HTTP_200_OK)
+        self.assertEqual(updated.data["status"], "active")
+```
+
+![](images/clipboard-878844823.png)
+
+**Paso 5. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.client
+```
+
+Debe terminar con `Ran 4 tests` y `OK`. Estas pruebas cubren el CRUD completo del cliente: alta, listado, detalle, actualización y baja lógica.
+
+![](images/clipboard-81091512.png)
+
+Una advertencia: a diferencia de las pruebas del ISS-03, estas sí usan base de datos, y Django crea una base temporal con el prefijo `test_`. Si usas MySQL o PostgreSQL y el usuario de tu `.env` no tiene permiso para crear bases de datos, la prueba fallará con un error de permisos. Se arregla otorgándole ese permiso al usuario.
+
+#### Explicación
+
+`ModelViewSet` automatiza `list`, `create`, `retrieve`, `update`, `partial_update` y `destroy`. El único comportamiento propio es la baja lógica, y la forma idiomática de cambiarla es `perform_destroy`.
+
+`SimpleRouter.register` genera las dos rutas del CRUD:
+
+```         
+clients/              list, create
+clients/<int:pk>/     retrieve, update, partial_update, destroy
+```
+
+`use_regex_path=False` pide convertidores de `path()` en lugar de expresiones regulares, y `lookup_value_converter = "int"` convierte el segmento en `<int:pk>`. No se usa `DefaultRouter` porque, además de esas rutas, publicaría una raíz de API que chocaría con la de las demás apps cuando se incluyan bajo el mismo `api/`.
+
+El proyecto solo entrega el prefijo `api/`, y la app entrega el recurso `clients`; Django los concatena y resulta `/api/clients/`.
+
+```         
+GET/POST /api/clients/
+GET/PUT/PATCH/DELETE /api/clients/<int:pk>/
+        │
+        ▼
+   ClientViewSet
+        │
+        ▼
+   ClientSerializer
+        │
+        ▼
+   clients
+```
+
+El parámetro `?status=` filtra la lista. Sin él se listan también los clientes inactivos.
+
+#### Cómo probarlo
+
+La prueba es de capa HTTP, con acceso abierto. No hace falta `runserver`: `APITestCase` llama la ruta dentro del proceso y la base temporal se borra al terminar.
+
+```         
+python manage.py test apps.client
+        │
+        ▼
+ClientApiTests                 sin usuario, sin Bearer, sin permisos
+        │
+        ├── POST   /api/clients/           201   status inactive, email en minúsculas
+        ├── GET    /api/clients/           200   la fila aparece en la lista
+        ├── GET    /api/clients/<id>/      200   el detalle conserva el nombre
+        ├── PATCH  /api/clients/<id>/      200   phone y status cambian
+        └── DELETE /api/clients/<id>/      204   la fila sigue, status inactive
+```
+
+Si además quieres verlo funcionando a mano, arranca el servidor y consulta la lista desde otra terminal:
+
+```         
+python manage.py runserver
+```
+
+```         
+curl http://127.0.0.1:8000/api/clients/
+```
+
+Swagger todavía no existe; llega más adelante con OpenAPI.
+
+![](images/clipboard-3066872824.png)
+
+![](images/clipboard-3594348483.png)
+
+![](images/clipboard-1031845180.png)
+
+![](images/clipboard-2491080853.png)
+
+#### Criterios de aceptación
+
+-  **AC-08-01:** un POST válido responde 201.
+
+-  **AC-08-02:** el registro queda en la tabla.
+
+-  **AC-08-03:** DELETE responde 204 y la fila sigue, con `status = inactive`.
+
+-  **AC-08-04:** el cuerpo inválido responde 400.
+
+#### Verificación
+
+Las pruebas de `ClientApiTests`, con el comando del Paso 5.
+
+#### GATE
+
+-  **AC-08-01:** POST responde 201. **PASS**.
+
+-  **AC-08-02:** `Client.objects.get` encuentra el registro. **PASS**.
+
+-  **AC-08-03:** DELETE lógico, la fila permanece inactiva. **PASS**.
+
+-  **AC-08-04:** nombre inválido responde 400. **PASS**.
