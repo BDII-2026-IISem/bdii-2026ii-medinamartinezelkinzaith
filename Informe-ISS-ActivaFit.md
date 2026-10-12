@@ -1166,3 +1166,299 @@ python manage.py migrate
 | AC-04-03 | timestamps            | test de alta  | PASS          |
 | AC-04-04 | email duplicado = 400 | test          | PASS          |
 | AC-04-05 | nombre corto = 400    | test          | PASS          |
+
+### ISS-05 — Plan, Trainer, Exercise, Routine, RoutineExercise y Measurement
+
+**Narrativa**
+
+Con el modelo `Client` ya migrado, ActivaFit incorpora el resto de su catálogo y el seguimiento de cada cliente. Primero se modelaron las tablas que no dependen de otras: planes, entrenadores y ejercicios. Después, las que se apoyan en ellas: las rutinas (que pertenecen a un entrenador y a un cliente), las líneas de cada rutina (que enlazan una rutina con un ejercicio) y las medidas corporales. La regla de integridad de la unidad es que no se puede borrar un registro mientras otros dependan de él: un entrenador con rutinas, o una rutina con ejercicios asignados, no se elimina.
+
+**Objetivo**
+
+Modelar el catálogo del gimnasio y la integridad 1→N entre entrenadores, clientes, rutinas, ejercicios y medidas.
+
+**Requisitos**
+
+- ISS-04 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+- Eliminar un registro referenciado debe restringirse.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Modelo `Plan`**
+
+El archivo `apps/plan/models.py` lo creó `startapp` vacío. Se reescribe entero.
+
+``` python
+from django.core.validators import MinLengthValidator
+from django.db import models
+
+from apps.common.models import ActivaFitModel
+
+
+class Plan(ActivaFitModel):
+    name = models.CharField(max_length=100, unique=True, validators=[MinLengthValidator(2)])
+    description = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        db_table = "plans"
+        verbose_name = "plan"
+        verbose_name_plural = "planes"
+        ordering = ["name", "id"]
+        constraints = [ActivaFitModel.status_constraint("plans_status_valid")]
+
+    def __str__(self):
+        return self.name
+```
+
+![](images/clipboard-4258787049.png)
+
+**Paso 2. Modelo `Trainer`**
+
+Archivo `apps/trainer/models.py`:
+
+``` python
+from django.core.validators import MinLengthValidator
+from django.db import models
+
+from apps.common.models import ActivaFitModel
+
+
+class Trainer(ActivaFitModel):
+    name = models.CharField(max_length=150, validators=[MinLengthValidator(2)])
+    phone = models.CharField(max_length=30, null=True, blank=True)
+    email = models.EmailField(max_length=150, null=True, blank=True, unique=True)
+    specialty = models.CharField(max_length=100, null=True, blank=True)
+
+    class Meta:
+        db_table = "trainers"
+        verbose_name = "entrenador"
+        verbose_name_plural = "entrenadores"
+        ordering = ["name", "id"]
+        constraints = [ActivaFitModel.status_constraint("trainers_status_valid")]
+
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+```
+
+![](images/clipboard-2257538105.png)
+
+**Paso 3. Modelos `Exercise`, `Routine` y `RoutineExercise`**
+
+Los tres viven en la app `routine`. Archivo `apps/routine/models.py`. Las claves foráneas usan referencias en texto (`"client.Client"`) para no importar los modelos de otras apps. `RESTRICT` impide borrar el padre mientras existan hijos. Las columnas `name`, `description` y `muscle_group` de `routine_exercises` están en tu diagrama y se respetan tal cual.
+
+``` python
+from decimal import Decimal
+
+from django.core.validators import MinLengthValidator, MinValueValidator
+from django.db import models
+
+from apps.common.models import ActivaFitModel
+
+
+class Exercise(ActivaFitModel):
+    name = models.CharField(max_length=120, unique=True, validators=[MinLengthValidator(2)])
+    description = models.CharField(max_length=255, null=True, blank=True)
+    muscle_group = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = "exercises"
+        verbose_name = "ejercicio"
+        verbose_name_plural = "ejercicios"
+        ordering = ["name", "id"]
+        constraints = [ActivaFitModel.status_constraint("exercises_status_valid")]
+
+    def __str__(self):
+        return self.name
+
+
+class Routine(ActivaFitModel):
+    trainer = models.ForeignKey(
+        "trainer.Trainer",
+        on_delete=models.RESTRICT,
+        related_name="routines",
+        db_column="trainer_id",
+    )
+    client = models.ForeignKey(
+        "client.Client",
+        on_delete=models.RESTRICT,
+        related_name="routines",
+        db_column="client_id",
+    )
+    name = models.CharField(max_length=120, validators=[MinLengthValidator(2)])
+    description = models.CharField(max_length=255, null=True, blank=True)
+
+    class Meta:
+        db_table = "routines"
+        verbose_name = "rutina"
+        verbose_name_plural = "rutinas"
+        ordering = ["name", "id"]
+        constraints = [ActivaFitModel.status_constraint("routines_status_valid")]
+
+    def __str__(self):
+        return self.name
+
+
+class RoutineExercise(ActivaFitModel):
+    routine = models.ForeignKey(
+        Routine,
+        on_delete=models.RESTRICT,
+        related_name="routine_exercises",
+        db_column="routine_id",
+    )
+    exercise = models.ForeignKey(
+        Exercise,
+        on_delete=models.RESTRICT,
+        related_name="routine_exercises",
+        db_column="exercise_id",
+    )
+    sets = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    repetitions = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    weight = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("0"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    rest_seconds = models.PositiveIntegerField(default=0)
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=255, null=True, blank=True)
+    muscle_group = models.CharField(max_length=50)
+
+    class Meta:
+        db_table = "routine_exercises"
+        verbose_name = "ejercicio de rutina"
+        verbose_name_plural = "ejercicios de rutina"
+        ordering = ["routine", "id"]
+        constraints = [
+            ActivaFitModel.status_constraint("routine_ex_status_valid"),
+            models.CheckConstraint(
+                condition=models.Q(weight__gte=0),
+                name="routine_ex_weight_non_neg",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.routine_id} - {self.name}"
+```
+
+![](images/clipboard-1730141250.png)
+
+**Paso 4. Modelo `Measurement`**
+
+Como esta tabla no tiene `status`, así que hereda solo las fechas (`TimeStampedModel`). Archivo `apps/measurement/models.py`:
+
+``` python
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator
+from django.db import models
+
+from apps.common.models import TimeStampedModel
+
+
+class Measurement(TimeStampedModel):
+    client = models.ForeignKey(
+        "client.Client",
+        on_delete=models.RESTRICT,
+        related_name="measurements",
+        db_column="client_id",
+    )
+    trainer = models.ForeignKey(
+        "trainer.Trainer",
+        on_delete=models.RESTRICT,
+        related_name="measurements",
+        db_column="trainer_id",
+    )
+    weight = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    height = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    body_fat = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    bmi = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        db_table = "measurements"
+        verbose_name = "medida"
+        verbose_name_plural = "medidas"
+        ordering = ["-created_at", "id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(weight__gt=0),
+                name="measurements_weight_pos",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(height__gt=0),
+                name="measurements_height_pos",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Medida {self.id} - cliente {self.client_id}"
+```
+
+![](images/clipboard-89375844.png)
+
+**Paso 5. Generar las migraciones y migrar**
+
+Se generan juntas porque `routine` y `measurement` dependen de `client` y `trainer`. La CLI escribe las migraciones.
+
+```         
+python manage.py makemigrations plan trainer routine measurement
+python manage.py migrate
+```
+
+![![](images/clipboard-600224042.png)](images/clipboard-600224042.png)
+
+#### Explicación
+
+`RESTRICT` impide borrar el padre mientras existan hijos; el intento de borrar al entrenador con una rutina lanza `RestrictedError`. Cada tabla guarda sus propios campos y las claves foráneas llevan el nombre físico del diagrama (`trainer_id`, `client_id`, `routine_id`, `exercise_id`). Los nombres de los constraints caben en 30 caracteres.
+
+```         
+Trainer 1 ───── N Routine N ───── 1 Client Routine 1 ───── N RoutineExercise N ───── 1 Exercise Client  1 ───── N Measurement N ───── 1 Trainer
+```
+
+#### Criterios de aceptación
+
+- **AC-05-01:** `trainer_id` y `client_id` son obligatorios en `Routine` (y las demás claves foráneas).
+
+- **AC-05-02:** borrar un registro con dependientes falla.
+
+- **AC-05-03:** el nombre de plan, de ejercicio y el correo de entrenador son únicos.
+
+- **AC-05-04:** `status` por defecto es `inactive`.
+
+#### Verificación
+
+La guía usa `ProductApiTests`, que dependen de la API (ISS-08 y siguientes). En este ISS se verifica con las pruebas del Paso 6.
+
+#### GATE
+
+- **AC-05-01:** campos `null=False` (EVI-05-03). **PASS**.
+
+- **AC-05-02:** `RestrictedError` al borrar el entrenador (EVI-05-03). **PASS**.
+
+- **AC-05-03:** `IntegrityError` por plan duplicado (EVI-05-03). **PASS**.
+
+- **AC-05-04:** `status` por defecto `inactive` (EVI-05-03). **PASS**.
