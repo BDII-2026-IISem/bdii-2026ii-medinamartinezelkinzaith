@@ -6,7 +6,7 @@ from rest_framework.test import APITestCase
 from apps.client.models import Client
 from apps.common.status import RecordStatus
 from unittest.mock import patch  
-from apps.membership.models import Membership, Payment
+from apps.membership.models import Attendance, Membership, Payment
 from apps.plan.models import Plan
 
 
@@ -127,3 +127,84 @@ class MembershipRegisterTests(APITestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(Membership.objects.count(), 0)
+    def test_detail_includes_payments(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        detail = self.client.get(f"/api/memberships/{created.data['id']}/")
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(len(detail.data["payments"]), 1)
+        self.assertEqual(detail.data["payments"][0]["amount"], "50000.00")
+
+    def test_list_returns_the_registered_membership(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        listed = self.client.get("/api/memberships/")
+        self.assertEqual(listed.status_code, 200)
+        self.assertTrue(any(row["id"] == created.data["id"] for row in listed.data))
+
+    def test_void_deactivates_once_and_keeps_attendances(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        membership_id = created.data["id"]
+        Attendance.objects.create(membership_id=membership_id, type="entrada")
+        first = self.client.delete(f"/api/memberships/{membership_id}/")
+        second = self.client.delete(f"/api/memberships/{membership_id}/")
+        self.assertEqual(first.status_code, 204)
+        self.assertEqual(second.status_code, 204)
+        membership = Membership.objects.get(pk=membership_id)
+        self.assertEqual(membership.status, RecordStatus.INACTIVE)
+        self.assertEqual(Payment.objects.filter(status=RecordStatus.ACTIVE).count(), 0)
+        self.assertEqual(Attendance.objects.count(), 1)
+
+class AttendanceApiTests(APITestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        gym_client = Client.objects.create(
+            document_type="CC",
+            document_number="1122334455",
+            name="Cliente Asistencia",
+            email="asistencia@example.com",
+            status=RecordStatus.ACTIVE,
+        )
+        plan = Plan.objects.create(name="Plan Asistencia", status=RecordStatus.ACTIVE)
+        self.membership = Membership.objects.create(
+            client=gym_client,
+            plan=plan,
+            start_date=today,
+            end_date=today + timedelta(days=30),
+            status=RecordStatus.ACTIVE,
+        )
+
+    def test_crud_and_hard_delete(self):
+        created = self.client.post(
+            "/api/attendances/",
+            {"membershipId": self.membership.id, "type": "entrada"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+        pk = created.data["id"]
+        detail = self.client.get(f"/api/attendances/{pk}/")
+        self.assertEqual(detail.status_code, 200)
+        updated = self.client.patch(f"/api/attendances/{pk}/", {"type": "salida"}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data["type"], "salida")
+        deleted = self.client.delete(f"/api/attendances/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Attendance.objects.count(), 0)
+
+    def test_invalid_membership(self):
+        response = self.client.post(
+            "/api/attendances/",
+            {"membershipId": 9999, "type": "entrada"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)

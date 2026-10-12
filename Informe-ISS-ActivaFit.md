@@ -3687,3 +3687,320 @@ Membership.objects.all().delete()
 ```
 
 ![](images/clipboard-1171492095.png)
+
+### ISS-12 — Consulta y anulación de membresías (y asistencias)
+
+**Narrativa**
+
+En esta unidad terminé la parte de membresías de la API. Ya podía registrar una membresía con sus pagos, pero me faltaba poder consultarla y anularla. La consulta es de solo lectura: listar las membresías y ver el detalle de una con sus pagos. La anulación no borra la fila, porque la membresía demuestra que el cliente estuvo inscrito y que pagó. Lo que hice fue marcarla como inactiva junto con sus pagos, y conservar las asistencias como historial. Al final agregué el CRUD de asistencias, que no tiene estado: ahí sí un DELETE elimina la fila, porque nada depende de una asistencia.
+
+**Objetivo**
+
+Leer una membresía con sus pagos y anularla sin borrar el histórico.
+
+**Requisitos**
+
+-  ISS-11 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Reescribir las vistas**
+
+En `apps/membership/views.py` agregué `MembershipReadViewSet`, que solo mezcla `RetrieveModelMixin`, `DestroyModelMixin` y `GenericViewSet`. No incluye `create` ni `update`: el alta ya tiene su `APIView` y las fechas y el estado no se editan por CRUD. `perform_destroy` llama a `membership.void()`, que ya escribí en el ISS-06. Al `MembershipCollectionAPIView` le agregué el `get` que lista las membresías, con el mismo queryset y serializer del viewset. Y agregué `AttendanceViewSet` para las asistencias. Reescribí el archivo entero, conservando lo del ISS-10 y el ISS-11:
+
+``` python
+from django.utils import timezone
+from rest_framework import mixins, status, viewsets
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.common.status import RecordStatus
+from apps.membership.models import Attendance, Membership
+from apps.membership.serializers import (
+    AttendanceSerializer,
+    MembershipRegisterSerializer,
+    MembershipSerializer,
+)
+
+
+class ActiveMembershipListAPIView(ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = MembershipSerializer
+
+    def get_queryset(self):
+        today = timezone.localdate()
+        return (
+            Membership.objects.select_related("client", "plan")
+            .prefetch_related("payments")
+            .filter(
+                status=RecordStatus.ACTIVE,
+                client__status=RecordStatus.ACTIVE,
+                plan__status=RecordStatus.ACTIVE,
+                start_date__lte=today,
+                end_date__gte=today,
+            )
+        )
+
+
+class MembershipReadViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet,
+):
+    queryset = Membership.objects.select_related("client", "plan").prefetch_related("payments")
+    serializer_class = MembershipSerializer
+    permission_classes = [AllowAny]
+    lookup_value_converter = "int"
+
+    def perform_destroy(self, instance):
+        instance.void()
+
+
+class MembershipRegisterAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = MembershipRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
+        membership = Membership.objects.select_related("client", "plan").prefetch_related(
+            "payments"
+        ).get(pk=membership.pk)
+        return Response(MembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+
+class MembershipCollectionAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        memberships = MembershipReadViewSet.queryset.all()
+        return Response(MembershipSerializer(memberships, many=True).data)
+
+    def post(self, request, *args, **kwargs):
+        handler = MembershipRegisterAPIView()
+        handler.request = request
+        handler.format_kwarg = None
+        handler.args = ()
+        handler.kwargs = {}
+        return handler.post(request)
+
+
+class AttendanceViewSet(viewsets.ModelViewSet):
+    queryset = Attendance.objects.select_related("membership")
+    serializer_class = AttendanceSerializer
+    permission_classes = [AllowAny]
+    lookup_value_converter = "int"
+```
+
+![](images/clipboard-3386119176.png)
+
+**Paso 2. Reescribir las rutas**
+
+El `GET /api/memberships/` ya existe: es la misma ruta `memberships/` del ISS-11. El detalle sí es una ruta nueva. Un viewset no se publica con `as_view()` vacío: le pasé un diccionario que dice qué método HTTP llama a qué acción (GET a `retrieve` y DELETE a `destroy`), así no quedan enlazados `put`, `patch` ni `post`. Las asistencias sí usan un router, porque son un CRUD completo. Reescribí `apps/membership/urls.py` entero:
+
+``` python
+from django.urls import path
+from rest_framework.routers import SimpleRouter
+
+from apps.membership.views import (
+    ActiveMembershipListAPIView,
+    AttendanceViewSet,
+    MembershipCollectionAPIView,
+    MembershipReadViewSet,
+)
+
+router = SimpleRouter(use_regex_path=False)
+router.register("attendances", AttendanceViewSet, basename="attendance")
+
+urlpatterns = [
+    path(
+        "memberships/active/",
+        ActiveMembershipListAPIView.as_view(),
+        name="membership-active",
+    ),
+    path("memberships/", MembershipCollectionAPIView.as_view(), name="membership-collection"),
+    path(
+        "memberships/<int:pk>/",
+        MembershipReadViewSet.as_view({"get": "retrieve", "delete": "destroy"}),
+        name="membership-detail",
+    ),
+]
+
+urlpatterns += router.urls
+```
+
+![](images/clipboard-4074431846.png)
+
+`config/urls.py` no se toca: ya incluye `apps.membership.urls` desde el ISS-10.
+
+**Paso 3. Agregar las pruebas**
+
+En `apps/membership/tests.py` reemplacé la línea de imports `from apps.membership.models import Membership, Payment` por esta:
+
+```         
+from apps.membership.models import Attendance, Membership, Payment
+```
+
+Luego agregué estos tres métodos al final de la clase `MembershipRegisterTests`, sin tocar su `setUp`:
+
+``` python
+    def test_detail_includes_payments(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        detail = self.client.get(f"/api/memberships/{created.data['id']}/")
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(len(detail.data["payments"]), 1)
+        self.assertEqual(detail.data["payments"][0]["amount"], "50000.00")
+
+    def test_list_returns_the_registered_membership(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        listed = self.client.get("/api/memberships/")
+        self.assertEqual(listed.status_code, 200)
+        self.assertTrue(any(row["id"] == created.data["id"] for row in listed.data))
+
+    def test_void_deactivates_once_and_keeps_attendances(self):
+        created = self.client.post(
+            "/api/memberships/",
+            self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+            format="json",
+        )
+        membership_id = created.data["id"]
+        Attendance.objects.create(membership_id=membership_id, type="entrada")
+        first = self.client.delete(f"/api/memberships/{membership_id}/")
+        second = self.client.delete(f"/api/memberships/{membership_id}/")
+        self.assertEqual(first.status_code, 204)
+        self.assertEqual(second.status_code, 204)
+        membership = Membership.objects.get(pk=membership_id)
+        self.assertEqual(membership.status, RecordStatus.INACTIVE)
+        self.assertEqual(Payment.objects.filter(status=RecordStatus.ACTIVE).count(), 0)
+        self.assertEqual(Attendance.objects.count(), 1)
+```
+
+![](images/clipboard-1210866987.png)
+
+Y al final del archivo agregué una clase nueva para las asistencias:
+
+``` python
+class AttendanceApiTests(APITestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        gym_client = Client.objects.create(
+            document_type="CC",
+            document_number="1122334455",
+            name="Cliente Asistencia",
+            email="asistencia@example.com",
+            status=RecordStatus.ACTIVE,
+        )
+        plan = Plan.objects.create(name="Plan Asistencia", status=RecordStatus.ACTIVE)
+        self.membership = Membership.objects.create(
+            client=gym_client,
+            plan=plan,
+            start_date=today,
+            end_date=today + timedelta(days=30),
+            status=RecordStatus.ACTIVE,
+        )
+
+    def test_crud_and_hard_delete(self):
+        created = self.client.post(
+            "/api/attendances/",
+            {"membershipId": self.membership.id, "type": "entrada"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, 201)
+        pk = created.data["id"]
+        detail = self.client.get(f"/api/attendances/{pk}/")
+        self.assertEqual(detail.status_code, 200)
+        updated = self.client.patch(f"/api/attendances/{pk}/", {"type": "salida"}, format="json")
+        self.assertEqual(updated.status_code, 200)
+        self.assertEqual(updated.data["type"], "salida")
+        deleted = self.client.delete(f"/api/attendances/{pk}/")
+        self.assertEqual(deleted.status_code, 204)
+        self.assertEqual(Attendance.objects.count(), 0)
+
+    def test_invalid_membership(self):
+        response = self.client.post(
+            "/api/attendances/",
+            {"membershipId": 9999, "type": "entrada"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+```
+
+![](images/clipboard-1663713384.png)
+
+**Paso 4. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.membership
+```
+
+![](images/clipboard-3734768500.png)
+
+Debe terminar con `Ran 11 tests` y `OK`: uno del ISS-10, ocho de `MembershipRegisterTests` y dos de `AttendanceApiTests`.
+
+#### Explicación
+
+Anular no es `QuerySet.delete()`. Quise conservar la fila porque demuestra que la membresía existió y que se pagó. Por eso `DELETE /api/memberships/<id>/` llama a `void()`, que pasa la membresía y sus pagos activos a `inactive` dentro de una transacción. La segunda llamada ve la membresía ya inactiva y no hace nada, por eso el resultado es idempotente. Las asistencias no se tocan: son el historial de cuándo vino el cliente, y la tabla `attendances` ni siquiera tiene estado.
+
+Usé un `GenericViewSet` con solo `Retrieve` y `Destroy`, y no un `ModelViewSet`, porque los datos de una membresía no se editan por CRUD: los pagos y las fechas nacen del registro, y el alta ya tiene su `APIView`. Con el diccionario de `as_view` publiqué solo esos dos métodos. En cambio, para las asistencias sí usé un `ModelViewSet` completo, con borrado real, porque no hay ninguna tabla que dependa de ellas.
+
+```         
+GET    /api/memberships/          lista
+GET    /api/memberships/<id>/     detalle con pagos
+DELETE /api/memberships/<id>/     void(): membresía y pagos → inactive
+/api/attendances/                 CRUD completo, DELETE real
+```
+
+#### Cómo probarlo
+
+Capa HTTP, con acceso abierto. Reutilizo el POST del ISS-11 y agrego las lecturas y la anulación. Los pagos no tienen ruta propia: viajan dentro de la membresía.
+
+```         
+python manage.py test apps.membership
+        │
+        ├── GET  /api/memberships/          200   la membresía recién creada está en la lista
+        ├── GET  /api/memberships/<id>/     200   el detalle trae sus pagos con el monto
+        ├── DELETE /api/memberships/<id>/   204
+        │       ├── primera vez   membresía y pagos inactive, la asistencia sigue
+        │       └── segunda vez   204 otra vez, sin cambios
+        └── /api/attendances/               POST 201 · GET · PATCH · DELETE 204 · membresía inexistente 400
+```
+
+![](images/clipboard-3968422807.png)
+
+![](images/clipboard-2268481233.png)
+
+![](images/clipboard-2048660839.png)
+
+![](images/clipboard-245553165.png)
+
+#### Criterios de aceptación
+
+- **AC-12-01:** el GET del detalle incluye los pagos con su monto.
+
+-  **AC-12-02:** el DELETE de una membresía responde 204.
+
+-  **AC-12-03:** la fila de `memberships` sigue existiendo en `inactive`, con sus pagos `inactive`.
+
+-  **AC-12-04:** anular dos veces no cambia nada más y las asistencias se conservan.
+
+-  **AC-12-05:** el CRUD de asistencias funciona, el DELETE elimina la fila y una membresía inexistente responde 400.
