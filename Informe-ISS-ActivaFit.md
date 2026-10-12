@@ -3250,3 +3250,440 @@ Si quieres verlo a mano, arranca el servidor y abre [`http://127.0.0.1:8000/api/
 -  **AC-10-01:** la membresía vigente aparece en la lista. **PASS**.
 
 -  **AC-10-02:** al vencer, la lista queda vacía y la fila permanece. **PASS**.
+
+### ISS-11 — Registro de membresía con APIView
+
+**Narrativa**
+
+Hasta ahora todo era CRUD o consulta. Registrar una membresía es distinto: implica crear la membresía, crear sus pagos y comprobar que el cliente y el plan estén activos y que no haya otra membresía vigente que se cruce con las fechas. Si cualquier paso falla, no puede quedar nada a medias: ni una membresía sin pagos ni un pago huérfano. Por eso el registro se hizo como una sola transacción, dentro del manager del modelo, y se expuso con una `APIView` en `POST /api/memberships/`. El serializer valida la forma de los datos; el manager protege la regla de negocio, de modo que se cumple aunque otra vista llame al mismo método.
+
+**Objetivo**
+
+Registrar una membresía como una sola transacción: cliente, plan, fechas y pagos.
+
+**Requisitos**
+
+-  ISS-10 superado (la app `membership` ya tiene `views.py` y `urls.py`).
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  Si cualquier paso falla, no queda membresía ni pagos.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Escribir el registro en el manager**
+
+El archivo `apps/membership/managers.py` ya existe, con `MembershipQuerySet` vacío. Se reescribe entero, conservando el manager que usa el modelo. El método `register` bloquea al cliente y al plan con `select_for_update` (así dos registros simultáneos del mismo cliente se ponen en fila) y toda la operación va dentro de `transaction.atomic()`.
+
+``` python
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+from django.utils import timezone
+
+from apps.common.status import RecordStatus
+
+
+class MembershipQuerySet(models.QuerySet):
+    def register(self, *, client, plan, start_date, end_date, payments):
+        if not payments:
+            raise ValidationError({"payments": ["La membresía requiere al menos un pago."]})
+        if end_date < start_date:
+            raise ValidationError(
+                {"end_date": ["La fecha de fin no puede ser anterior a la de inicio."]}
+            )
+
+        normalized = []
+        for payment in payments:
+            amount = Decimal(payment["amount"]).quantize(Decimal("0.01"))
+            if amount < 0:
+                raise ValidationError({"payments": ["El monto no puede ser negativo."]})
+            normalized.append(
+                {
+                    "method": payment["method"],
+                    "amount": amount,
+                    "payment_date": payment.get("payment_date") or timezone.now(),
+                }
+            )
+
+        with transaction.atomic():
+            locked_client = client.__class__.objects.select_for_update().get(pk=client.pk)
+            if locked_client.status != RecordStatus.ACTIVE:
+                raise ValidationError({"client_id": ["El cliente debe estar active."]})
+
+            locked_plan = plan.__class__.objects.select_for_update().get(pk=plan.pk)
+            if locked_plan.status != RecordStatus.ACTIVE:
+                raise ValidationError({"plan_id": ["El plan debe estar active."]})
+
+            overlap = self.model.objects.filter(
+                client=locked_client,
+                status=RecordStatus.ACTIVE,
+                start_date__lte=end_date,
+                end_date__gte=start_date,
+            ).exists()
+            if overlap:
+                raise ValidationError(
+                    {
+                        "start_date": [
+                            "El cliente ya tiene una membresía vigente que se cruza con esas fechas."
+                        ]
+                    }
+                )
+
+            membership = self.model(
+                client=locked_client,
+                plan=locked_plan,
+                start_date=start_date,
+                end_date=end_date,
+                status=RecordStatus.INACTIVE,
+            )
+            membership.save()
+
+            for payment in normalized:
+                membership.payments.create(
+                    method=payment["method"],
+                    amount=payment["amount"],
+                    payment_date=payment["payment_date"],
+                    status=RecordStatus.ACTIVE,
+                )
+
+            membership.status = RecordStatus.ACTIVE
+            membership.save(update_fields=["status", "updated_at"])
+            return membership
+
+
+class MembershipManager(models.Manager.from_queryset(MembershipQuerySet)):
+    pass
+```
+
+![](images/clipboard-1179246793.png)
+
+Si algo falla dentro de `transaction.atomic()`, no queda ninguna fila. El modelo no se toca: `Membership.objects` ya usa este manager.
+
+**Paso 2. Agregar los serializers de alta**
+
+El archivo `apps/membership/serializers.py` ya tiene los serializers de lectura (ISS-07). Se parchea.
+
+Reemplaza las dos primeras líneas de imports, es decir, `from rest_framework import serializers` y `from apps.membership.models import Attendance, Membership, Payment`, por este bloque:
+
+``` python
+from decimal import Decimal
+
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import serializers
+
+from apps.client.models import Client
+from apps.membership.models import Attendance, Membership, Payment
+from apps.plan.models import Plan
+```
+
+![](images/clipboard-3737744493.png)
+
+Y al final del archivo agrega:
+
+``` python
+class PaymentInputSerializer(serializers.Serializer):
+    method = serializers.CharField(max_length=30)
+    amount = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0.00"),
+    )
+    payment_date = serializers.DateTimeField(required=False)
+
+
+class MembershipRegisterSerializer(serializers.Serializer):
+    client_id = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.all(),
+        source="client",
+    )
+    plan_id = serializers.PrimaryKeyRelatedField(
+        queryset=Plan.objects.all(),
+        source="plan",
+    )
+    start_date = serializers.DateField()
+    end_date = serializers.DateField()
+    payments = PaymentInputSerializer(many=True, allow_empty=False)
+
+    def create(self, validated_data):
+        try:
+            return Membership.objects.register(
+                client=validated_data["client"],
+                plan=validated_data["plan"],
+                start_date=validated_data["start_date"],
+                end_date=validated_data["end_date"],
+                payments=validated_data["payments"],
+            )
+        except DjangoValidationError as exc:
+            if getattr(exc, "message_dict", None):
+                raise serializers.ValidationError(exc.message_dict) from exc
+            raise serializers.ValidationError(exc.messages) from exc
+```
+
+![](images/clipboard-4117024961.png)
+
+**Paso 3. Escribir las vistas**
+
+El archivo `apps/membership/views.py` ya existe con la vista de membresías vigentes (ISS-10). Se reescribe entero, conservándola. El permiso sigue siendo `AllowAny` en esta fase. El GET del listado y la anulación se agregan en el ISS-12.
+
+``` python
+from django.utils import timezone
+from rest_framework import status
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.common.status import RecordStatus
+from apps.membership.models import Membership
+from apps.membership.serializers import MembershipRegisterSerializer, MembershipSerializer
+
+
+class ActiveMembershipListAPIView(ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = MembershipSerializer
+
+    def get_queryset(self):
+        today = timezone.localdate()
+        return (
+            Membership.objects.select_related("client", "plan")
+            .prefetch_related("payments")
+            .filter(
+                status=RecordStatus.ACTIVE,
+                client__status=RecordStatus.ACTIVE,
+                plan__status=RecordStatus.ACTIVE,
+                start_date__lte=today,
+                end_date__gte=today,
+            )
+        )
+
+
+class MembershipRegisterAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = MembershipRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
+        membership = Membership.objects.select_related("client", "plan").prefetch_related(
+            "payments"
+        ).get(pk=membership.pk)
+        return Response(MembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+
+class MembershipCollectionAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        handler = MembershipRegisterAPIView()
+        handler.request = request
+        handler.format_kwarg = None
+        handler.args = ()
+        handler.kwargs = {}
+        return handler.post(request)
+```
+
+La operación vive en `MembershipQuerySet.register`, invocada por `MembershipRegisterSerializer.create`. `MembershipRegisterAPIView.post` solo valida y responde 201. `MembershipCollectionAPIView.post` le entrega el `request` de DRF ya leído; no vuelve a llamar `as_view()`. Existe como colección para que el ISS-12 le agregue el GET en la misma ruta.
+
+![](images/clipboard-1510582405.png)
+
+**Paso 4. Agregar la ruta**
+
+La membresía no usa router: un `SimpleRouter` sobre un viewset publicaría listar, crear, actualizar y borrar, y aquí el alta es una `APIView`. El archivo `apps/membership/urls.py` se reescribe entero, conservando la ruta del ISS-10:
+
+``` python
+from django.urls import path
+
+from apps.membership.views import ActiveMembershipListAPIView, MembershipCollectionAPIView
+
+urlpatterns = [
+    path(
+        "memberships/active/",
+        ActiveMembershipListAPIView.as_view(),
+        name="membership-active",
+    ),
+    path("memberships/", MembershipCollectionAPIView.as_view(), name="membership-collection"),
+]
+```
+
+`config/urls.py` no se toca: ya incluye `apps.membership.urls` desde el ISS-10. `path("memberships/", ...)` más el prefijo `api/` produce `POST /api/memberships/`, y el mismo path aceptará GET en el ISS-12.
+
+![](images/clipboard-729441290.png)
+
+**Paso 5. Agregar las pruebas**
+
+El archivo `apps/membership/tests.py` ya tiene `MembershipAvailableTests` (ISS-10), y se conserva. Reemplaza la línea de imports `from apps.membership.models import Membership` por estas dos:
+
+```         
+from unittest.mock import patch  
+from apps.membership.models import Membership, Payment
+```
+
+![](images/clipboard-2784541430.png)
+
+Y al final del archivo agrega la nueva clase. Las pruebas son de acceso abierto y solo ejercitan `POST /api/memberships/`. El cliente y el plan del `setUp` se crean por el ORM, activos.
+
+``` python
+class MembershipRegisterTests(APITestCase):
+    def setUp(self):
+        self.buyer = Client.objects.create(
+            document_type="CC",
+            document_number="9876543210",
+            name="Comprador",
+            email="comprador@example.com",
+            status=RecordStatus.ACTIVE,
+        )
+        self.plan = Plan.objects.create(name="Plan Mensual", status=RecordStatus.ACTIVE)
+
+    def _payload(self, payments, start_date=None, end_date=None):
+        today = timezone.localdate()
+        return {
+            "clientId": self.buyer.id,
+            "planId": self.plan.id,
+            "startDate": (start_date or today).isoformat(),
+            "endDate": (end_date or today + timedelta(days=30)).isoformat(),
+            "payments": payments,
+        }
+
+    def test_register_creates_membership_and_payments(self):
+        response = self.client.post(
+            "/api/memberships/",
+            self._payload(
+                [
+                    {"method": "efectivo", "amount": "50000.00"},
+                    {"method": "tarjeta", "amount": "30000.00"},
+                ]
+            ),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["status"], "active")
+        self.assertEqual(len(response.data["payments"]), 2)
+        self.assertTrue(all(p["status"] == "active" for p in response.data["payments"]))
+        self.assertEqual(Membership.objects.count(), 1)
+        self.assertEqual(Payment.objects.count(), 2)
+
+    def test_overlapping_dates_are_rejected(self):
+        payload = self._payload([{"method": "efectivo", "amount": "50000.00"}])
+        first = self.client.post("/api/memberships/", payload, format="json")
+        second = self.client.post("/api/memberships/", payload, format="json")
+        self.assertEqual(first.status_code, 201)
+        self.assertEqual(second.status_code, 400)
+        self.assertEqual(Membership.objects.count(), 1)
+
+    def test_payment_failure_rolls_back_the_membership(self):
+        with patch.object(Payment, "save", side_effect=RuntimeError("fallo de pago")):
+            with self.assertRaises(RuntimeError):
+                self.client.post(
+                    "/api/memberships/",
+                    self._payload([{"method": "efectivo", "amount": "50000.00"}]),
+                    format="json",
+                )
+        self.assertEqual(Membership.objects.count(), 0)
+        self.assertEqual(Payment.objects.count(), 0)
+
+    def test_inactive_client_or_plan_is_rejected(self):
+        payload = self._payload([{"method": "efectivo", "amount": "50000.00"}])
+        self.plan.status = RecordStatus.INACTIVE
+        self.plan.save()
+        inactive_plan = self.client.post("/api/memberships/", payload, format="json")
+        self.assertEqual(inactive_plan.status_code, 400)
+        self.plan.status = RecordStatus.ACTIVE
+        self.plan.save()
+        self.buyer.status = RecordStatus.INACTIVE
+        self.buyer.save()
+        inactive_client = self.client.post("/api/memberships/", payload, format="json")
+        self.assertEqual(inactive_client.status_code, 400)
+        self.assertEqual(Membership.objects.count(), 0)
+
+    def test_end_date_before_start_date_is_rejected(self):
+        today = timezone.localdate()
+        response = self.client.post(
+            "/api/memberships/",
+            self._payload(
+                [{"method": "efectivo", "amount": "50000.00"}],
+                start_date=today,
+                end_date=today - timedelta(days=1),
+            ),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Membership.objects.count(), 0)
+```
+
+![](images/clipboard-2482056504.png)
+
+**Paso 6. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.membership.tests.MembershipRegisterTests
+```
+
+Debe terminar con `Ran 5 tests` y `OK`. Si quieres correr también la prueba del ISS-10, usa `python manage.py test apps.membership`, que debe dar `Ran 6 tests`.
+
+![](images/clipboard-1209389958.png)
+
+#### Explicación
+
+Un `ModelViewSet.create` guardaría solo la cabecera y dejaría los pagos para otra petición, y eso no es atómico. La `APIView` existe porque el comportamiento es particular: varias filas (membresía y pagos), validación contra el estado del cliente y del plan, y una regla de no cruce de fechas.
+
+El serializer sigue siendo el lugar de la validación de forma (tipos, montos no negativos, al menos un pago). El manager es el lugar de la invariante, para que también se cumpla si otra vista llama `Membership.objects.register`. No se creó una clase `MembershipService`. El bloqueo con `select_for_update` sobre el cliente hace que dos registros simultáneos del mismo cliente se procesen uno tras otro, y por eso la comprobación de cruce de fechas es fiable.
+
+``` texinfo
+POST /api/memberships/
+      │
+      ▼
+MembershipCollectionAPIView
+      │
+      ▼
+MembershipRegisterAPIView
+      │
+      ▼
+Membership.objects.register
+      │
+      ▼
+atomic → COMMIT o ROLLBACK
+```
+
+Además hice una prueba manual con el servidor encendido (`python manage.py runserver`). Primero activé un cliente y un plan, porque se crean `inactive` por defecto, y luego registré una membresía con `curl`:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/memberships/ -H "Content-Type: application/json" -d '{"clientId":6,"planId":2,"startDate":"2026-10-12","endDate":"2026-11-11","payments":[{"method":"efectivo","amount":"50000.00"}]}'
+```
+
+La respuesta trajo la membresía en `"status":"active"` con su pago. Al repetir el mismo comando, el servidor respondió por el cruce de fechas, igual que en la prueba automática. Al terminar borré los datos de prueba desde el shell de Django.
+
+```         
+curl -X POST http://127.0.0.1:8000/api/plans/ -H "Content-Type: application/json" -d '{"name":"Plan Mensual","status":"active"}'
+```
+
+![](images/clipboard-3864524702.png)
+
+Para el cliente, ya tienes uno de la prueba anterior; cambia `6` por su id y actívalo:
+
+```         
+curl -X PATCH http://127.0.0.1:8000/api/clients/6/ -H "Content-Type: application/json" -d '{"status":"active"}'
+```
+
+![](images/clipboard-1413986989.png)
+
+![](images/clipboard-3889737715.png)
+
+Esa membresía queda guardada en tu base de datos real. Si no la quieres, bórrala desde el shell de Django (`python manage.py shell`), en este orden:
+
+```         
+from apps.membership.models import Payment, Membership
+Payment.objects.all().delete()
+Membership.objects.all().delete()
+```
+
+![](images/clipboard-1171492095.png)
