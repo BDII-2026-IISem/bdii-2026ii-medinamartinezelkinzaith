@@ -1762,3 +1762,486 @@ python manage.py sqlmigrate membership 0001
 - **AC-06-04:** `void()` deja `inactive inactive`. **PASS**.
 
 - **AC-06-05:** no hay `ManyToManyField` en `membership/models.py`. **P**
+
+### ISS-07 — Serializers y JSON camelCase
+
+**Narrativa**
+
+Los modelos ya existen y están migrados, pero la API todavía no sabe hablar con el exterior. En esta unidad se instaló Django REST Framework y se escribió una capa de traducción: los serializers convierten cada modelo de ActivaFit en JSON y validan los datos que llegan. Los nombres de los campos en Python siguen en `snake_case` (`created_at`), pero en el JSON de la API salen en `camelCase` (`createdAt`), que es lo que espera un frontend. Esa conversión ocurre solo en el borde HTTP; los modelos no se tocan.
+
+**Objetivo**
+
+Traducir los modelos a JSON sin renombrar los campos de Python.
+
+**Requisitos**
+
+- ISS-06 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 0. Activar el entorno e instalar los paquetes de la API**
+
+Hasta aquí el proyecto solo tenía Django. Estos tres paquetes forman la API. Se instalan juntos porque el renderer camelCase y CORS se declaran en el mismo bloque `REST_FRAMEWORK`.
+
+```         
+source .venv/bin/activate
+python -m pip install "djangorestframework==3.17.2" "djangorestframework-camel-case==1.4.2" "django-cors-headers==4.9.0"
+python -m pip freeze > requirements.txt
+```
+
+-  `djangorestframework` aporta los serializers, las vistas y el cliente de pruebas. Sin él, `from rest_framework import serializers` falla.
+
+-  `djangorestframework-camel-case` convierte `created_at` en `createdAt` al responder, y al revés al recibir.
+
+`django-cors-headers` evita que un navegador en otro origen bloquee la API. En el laboratorio se permiten todos los orígenes; en producción se listan explícitamente.
+
+![](images/clipboard-4012940233.png)
+
+**Paso 1. Parchear `config/settings/__init__.py`**
+
+El archivo ya existe. DRF entra ahora con permiso abierto (`AllowAny`), porque todavía no hay autenticación; un ISS posterior cambia ese valor.
+
+Encima de `"apps.security.apps.SecurityConfig",` agrega:
+
+```         
+    "rest_framework",
+    "corsheaders",
+```
+
+Encima de `"django.middleware.security.SecurityMiddleware",` agrega:
+
+```         
+    "corsheaders.middleware.CorsMiddleware",
+```
+
+![](images/clipboard-1173804665.png)
+
+Debajo de `DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"` agrega:
+
+``` python
+CORS_ALLOW_ALL_ORIGINS = os.environ.get("CORS_ALLOW_ALL_ORIGINS", "True").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
+
+REST_FRAMEWORK = {
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.AllowAny",
+    ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+    ],
+    "DEFAULT_PARSER_CLASSES": [
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+    ],
+    "DEFAULT_PAGINATION_CLASS": None,
+}
+```
+
+![](images/clipboard-1479854514.png)
+
+**Paso 2. Serializers de `client`**
+
+Los archivos `serializers.py` no existen: `startapp` no los crea. Archivo `apps/client/serializers.py`:
+
+``` python
+from rest_framework import serializers
+
+from apps.client.models import Client
+
+
+class ClientSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = [
+            "id",
+            "document_type",
+            "document_number",
+            "name",
+            "phone",
+            "email",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 150},
+            "email": {"required": False, "allow_null": True, "allow_blank": True},
+            "phone": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_email(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        if attrs.get("phone") == "":
+            attrs["phone"] = None
+        return attrs
+```
+
+![](images/clipboard-3632260417.png)
+
+**Paso 3. Serializers de `trainer` y `plan`**
+
+Archivo `apps/trainer/serializers.py`:
+
+``` python
+from rest_framework import serializers
+
+from apps.trainer.models import Trainer
+
+
+class TrainerSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Trainer
+        fields = [
+            "id",
+            "name",
+            "phone",
+            "email",
+            "specialty",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 150},
+            "email": {"required": False, "allow_null": True, "allow_blank": True},
+            "phone": {"required": False, "allow_null": True, "allow_blank": True},
+            "specialty": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_email(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value.strip().lower()
+
+    def validate(self, attrs):
+        for field in ("phone", "specialty"):
+            if attrs.get(field) == "":
+                attrs[field] = None
+        return attrs
+```
+
+![](images/clipboard-3430988937.png)
+
+Archivo `apps/plan/serializers.py`:
+
+``` python
+from rest_framework import serializers
+
+from apps.plan.models import Plan
+
+
+class PlanSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Plan
+        fields = ["id", "name", "description", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 100},
+            "description": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_description(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value
+```
+
+![](images/clipboard-1619383553.png)
+
+**Paso 4. Serializers de `routine`**
+
+Archivo `apps/routine/serializers.py`. Las rutinas exponen `trainer_id` y `client_id` escribibles, y `trainer_name` y `client_name` de solo lectura. En el JSON se verán como `trainerId`, `clientId`, `trainerName` y `clientName`.
+
+``` python
+from rest_framework import serializers
+
+from apps.client.models import Client
+from apps.routine.models import Exercise, Routine, RoutineExercise
+from apps.trainer.models import Trainer
+
+
+class ExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exercise
+        fields = ["id", "name", "description", "muscle_group", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 120},
+            "description": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_description(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value
+
+
+class RoutineSerializer(serializers.ModelSerializer):
+    trainer_id = serializers.PrimaryKeyRelatedField(
+        source="trainer",
+        queryset=Trainer.objects.all(),
+    )
+    client_id = serializers.PrimaryKeyRelatedField(
+        source="client",
+        queryset=Client.objects.all(),
+    )
+    trainer_name = serializers.CharField(source="trainer.name", read_only=True)
+    client_name = serializers.CharField(source="client.name", read_only=True)
+
+    class Meta:
+        model = Routine
+        fields = [
+            "id",
+            "trainer_id",
+            "trainer_name",
+            "client_id",
+            "client_name",
+            "name",
+            "description",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "trainer_name", "client_name", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 120},
+            "description": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_description(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value
+
+
+class RoutineExerciseSerializer(serializers.ModelSerializer):
+    routine_id = serializers.PrimaryKeyRelatedField(
+        source="routine",
+        queryset=Routine.objects.all(),
+    )
+    exercise_id = serializers.PrimaryKeyRelatedField(
+        source="exercise",
+        queryset=Exercise.objects.all(),
+    )
+
+    class Meta:
+        model = RoutineExercise
+        fields = [
+            "id",
+            "routine_id",
+            "exercise_id",
+            "sets",
+            "repetitions",
+            "weight",
+            "rest_seconds",
+            "name",
+            "description",
+            "muscle_group",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "description": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+    def validate_description(self, value):
+        if value is None or str(value).strip() == "":
+            return None
+        return value
+```
+
+![](images/clipboard-3191148772.png)
+
+**Paso 5. Serializer de `measurement`**
+
+Archivo `apps/measurement/serializers.py`. No incluye `status`, porque tu tabla `measurements` no lo tiene.
+
+``` python
+from rest_framework import serializers
+
+from apps.client.models import Client
+from apps.measurement.models import Measurement
+from apps.trainer.models import Trainer
+
+
+class MeasurementSerializer(serializers.ModelSerializer):
+    client_id = serializers.PrimaryKeyRelatedField(
+        source="client",
+        queryset=Client.objects.all(),
+    )
+    trainer_id = serializers.PrimaryKeyRelatedField(
+        source="trainer",
+        queryset=Trainer.objects.all(),
+    )
+    client_name = serializers.CharField(source="client.name", read_only=True)
+    trainer_name = serializers.CharField(source="trainer.name", read_only=True)
+
+    class Meta:
+        model = Measurement
+        fields = [
+            "id",
+            "client_id",
+            "client_name",
+            "trainer_id",
+            "trainer_name",
+            "weight",
+            "height",
+            "body_fat",
+            "bmi",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "client_name", "trainer_name", "created_at", "updated_at"]
+```
+
+![](images/clipboard-3288318075.png)
+
+**Paso 6. Serializers de `membership`**
+
+Archivo `apps/membership/serializers.py`. En este ISS la membresía y sus pagos solo se **leen**; el alta transaccional se agrega más adelante. La asistencia sí es escribible, porque es un registro simple.
+
+``` python
+from rest_framework import serializers
+
+from apps.membership.models import Attendance, Membership, Payment
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ["id", "membership", "method", "amount", "payment_date", "status"]
+        read_only_fields = fields
+
+
+class MembershipSerializer(serializers.ModelSerializer):
+    client_name = serializers.CharField(source="client.name", read_only=True)
+    plan_name = serializers.CharField(source="plan.name", read_only=True)
+    payments = PaymentSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Membership
+        fields = [
+            "id",
+            "client",
+            "client_name",
+            "plan",
+            "plan_name",
+            "start_date",
+            "end_date",
+            "status",
+            "payments",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    membership_id = serializers.PrimaryKeyRelatedField(
+        source="membership",
+        queryset=Membership.objects.all(),
+    )
+
+    class Meta:
+        model = Attendance
+        fields = ["id", "membership_id", "attendance_date", "type", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+```
+
+![](images/clipboard-1856947421.png)
+
+**Paso 7. Verificar la configuración**
+
+```         
+python manage.py check
+```
+
+![](images/clipboard-3326648032.png)
+
+#### Explicación
+
+Los serializers no usan `fields = "__all__"`: cada campo expuesto se lista a propósito. Los correos en blanco se convierten en `None`, para que la unicidad del correo no choque con cadenas vacías. Los serializers de relaciones exponen el identificador escribible (`trainer_id`) y el nombre de solo lectura (`trainer_name`), así el cliente no necesita una segunda consulta para mostrar nombres.
+
+La conversión de nombres ocurre solo en el borde HTTP:
+
+```         
+Python created_at  →  tabla created_at  →  JSON createdAt
+```
+
+El parser hace el camino inverso. No se renombra ningún campo del modelo.
+
+#### Criterios de aceptación
+
+- **AC-07-01:** el JSON de un cliente contiene `createdAt` y no `created_at`.
+
+- **AC-07-02:** `Maria@Example.com` se guarda como `maria@example.com`.
+
+- **AC-07-03:** la rutina informa `trainerName` y `clientName` sin pedir otra consulta.
+
+#### Verificación
+
+La guía comprueba esto con pruebas HTTP de la API, que dependen de las rutas y vistas de los ISS siguientes. Por ahora se verifica en la consola de Django, usando el mismo renderer que usará la API:
+
+```         
+python manage.py shell
+```
+
+```         
+from apps.client.serializers import ClientSerializer
+from apps.trainer.models import Trainer
+from apps.routine.models import Routine
+from apps.routine.serializers import RoutineSerializer
+from djangorestframework_camel_case.render import CamelCaseJSONRenderer
+
+s = ClientSerializer(data={"document_type": "CC", "document_number": "1234567890", "name": "Maria Lopez", "email": "Maria@Example.com"})
+s.is_valid()
+s.validated_data["email"]
+c = s.save()
+CamelCaseJSONRenderer().render(ClientSerializer(c).data)
+
+t = Trainer.objects.create(name="Entrenador Prueba")
+r = Routine.objects.create(name="Rutina A", trainer=t, client=c)
+CamelCaseJSONRenderer().render(RoutineSerializer(r).data)
+```
+
+![](images/clipboard-2073724203.png)
+
+-  `s.validated_data["email"]` debe dar `'maria@example.com'` (AC-07-02).
+
+-  El primer `render` debe mostrar `createdAt` y `documentNumber` (AC-07-01).
+
+-  El segundo debe mostrar `trainerName` y `clientName` (AC-07-03).
+
+Para limpiar:
+
+```         
+Routine.objects.all().delete()
+Trainer.objects.all().delete()
+c.delete()
+```
+
+![](images/clipboard-2761538668.png)
+
+#### GATE
+
+-  **AC-07-01:** el render muestra `createdAt`. **PASS**.
+
+-  **AC-07-02:** el correo se guarda en minúsculas. **PASS**.
+
+-  **AC-07-03:** `trainerName` y `clientName` aparecen en la rutina. **PASS**.
