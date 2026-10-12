@@ -1462,3 +1462,303 @@ La guía usa `ProductApiTests`, que dependen de la API (ISS-08 y siguientes). En
 - **AC-05-03:** `IntegrityError` por plan duplicado (EVI-05-03). **PASS**.
 
 - **AC-05-04:** `status` por defecto `inactive` (EVI-05-03). **PASS**.
+
+### ISS-06 — Membership, Payment y Attendance
+
+**Narrativa**
+
+Hasta aquí ActivaFit tiene sus catálogos y a sus clientes. Ahora entra el flujo del negocio: un cliente adquiere un plan y eso genera una membresía con fecha de inicio y de fin. Cada membresía recibe pagos y registra las asistencias del cliente al gimnasio. Clientes y planes no se relacionan con un muchos-a-muchos simple: la membresía es una entidad con sus propios datos (fechas, estado) y funciona como tabla intermedia explícita. También se dejó lista la anulación: anular una membresía la desactiva junto con sus pagos, pero conserva el historial de asistencias.
+
+**Objetivo**
+
+Representar la membresía, sus pagos y sus asistencias, con integridad entre clientes, planes y membresías.
+
+**Requisitos**
+
+- ISS-05 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+- `memberships` enlaza un cliente con un plan, con fechas de inicio y fin.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Crear el manager de membresías**
+
+El archivo `apps/membership/managers.py` es nuevo. En este ISS el manager todavía no registra la membresía: solo existe para que el modelo cuelgue `objects` de una clase propia. El método `register` se agrega más adelante, cuando la operación sea transaccional.
+
+``` python
+from django.db import models
+
+
+class MembershipQuerySet(models.QuerySet):
+    pass
+
+
+class MembershipManager(models.Manager.from_queryset(MembershipQuerySet)):
+    pass
+```
+
+![](images/clipboard-3937050952.png)
+
+**Paso 2. Escribir los modelos**
+
+El archivo `apps/membership/models.py` ya existe, vacío. Se reescribe entero. No se usa `ManyToManyField`. Según tu diagrama, `payments` no tiene fechas de creación (por eso `Payment` define su propio `status`) y `attendances` no tiene `status` (por eso solo hereda las fechas).
+
+``` python
+from decimal import Decimal
+
+from django.core.validators import MinValueValidator
+from django.db import models, transaction
+from django.utils import timezone
+
+from apps.common.models import ActivaFitModel, TimeStampedModel
+from apps.common.status import RecordStatus
+from apps.membership.managers import MembershipManager
+
+
+class Membership(ActivaFitModel):
+    client = models.ForeignKey(
+        "client.Client",
+        on_delete=models.RESTRICT,
+        related_name="memberships",
+        db_column="client_id",
+    )
+    plan = models.ForeignKey(
+        "plan.Plan",
+        on_delete=models.RESTRICT,
+        related_name="memberships",
+        db_column="plan_id",
+    )
+    start_date = models.DateField()
+    end_date = models.DateField()
+
+    objects = MembershipManager()
+
+    class Meta:
+        db_table = "memberships"
+        verbose_name = "membresía"
+        verbose_name_plural = "membresías"
+        ordering = ["-start_date", "-id"]
+        constraints = [
+            ActivaFitModel.status_constraint("memberships_status_valid"),
+            models.CheckConstraint(
+                condition=models.Q(end_date__gte=models.F("start_date")),
+                name="memberships_dates_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Membresía {self.pk}"
+
+    def void(self):
+        with transaction.atomic():
+            membership = Membership.objects.select_for_update().get(pk=self.pk)
+            if membership.status == RecordStatus.INACTIVE:
+                return membership
+            for payment in membership.payments.select_for_update():
+                if payment.status != RecordStatus.ACTIVE:
+                    continue
+                payment.status = RecordStatus.INACTIVE
+                payment.save(update_fields=["status"])
+            membership.status = RecordStatus.INACTIVE
+            membership.save(update_fields=["status", "updated_at"])
+            return membership
+
+
+class Payment(models.Model):
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.RESTRICT,
+        related_name="payments",
+        db_column="membership_id",
+    )
+    method = models.CharField(max_length=30)
+    amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    payment_date = models.DateTimeField(default=timezone.now)
+    status = models.CharField(
+        max_length=8,
+        choices=RecordStatus.choices,
+        default=RecordStatus.INACTIVE,
+    )
+
+    class Meta:
+        db_table = "payments"
+        verbose_name = "pago"
+        verbose_name_plural = "pagos"
+        ordering = ["-payment_date", "-id"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="payments_status_valid",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(amount__gte=0),
+                name="payments_amount_non_neg",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Pago {self.pk} - {self.amount}"
+
+
+class Attendance(TimeStampedModel):
+    membership = models.ForeignKey(
+        Membership,
+        on_delete=models.RESTRICT,
+        related_name="attendances",
+        db_column="membership_id",
+    )
+    attendance_date = models.DateTimeField(default=timezone.now)
+    type = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = "attendances"
+        verbose_name = "asistencia"
+        verbose_name_plural = "asistencias"
+        ordering = ["-attendance_date", "-id"]
+
+    def __str__(self):
+        return f"Asistencia {self.pk}"
+```
+
+![](images/clipboard-776016491.png)
+
+**Paso 3. Generar la migración y migrar**
+
+```         
+python manage.py makemigrations membership
+python manage.py migrate
+```
+
+![](images/clipboard-1490164872.png)
+
+`void()` ya está en el modelo porque la anulación es parte de su comportamiento. El endpoint que la llama llega en un ISS posterior. `register()` todavía no existe: se agrega más adelante dentro de `MembershipQuerySet`.
+
+**Paso 4. Comprobar en el shell**
+
+```         
+python manage.py shell
+```
+
+``` python
+from datetime import date, timedelta
+from django.db import IntegrityError, transaction
+from django.db.models import RestrictedError
+from apps.client.models import Client
+from apps.plan.models import Plan
+from apps.membership.models import Membership, Payment, Attendance
+
+c = Client.objects.create(document_type="CC", document_number="222", name="Cliente Prueba", email="prueba@mail.com")
+p = Plan.objects.create(name="Plan Mensual")
+m = Membership.objects.create(client=c, plan=p, start_date=date.today(), end_date=date.today() + timedelta(days=30))
+pay = Payment.objects.create(membership=m, method="efectivo", amount=80000, status="active")
+a = Attendance.objects.create(membership=m, type="entrada")
+m.status
+```
+
+`m.status` debe mostrar `'inactive'`. Ahora el borrado restringido (pulsa Enter dos veces tras cada bloque):
+
+![](images/clipboard-3917458662.png)
+
+```         
+try:
+    p.delete()
+except RestrictedError as e:
+    print("Restringido:", e)
+```
+
+![](images/clipboard-1436113346.png)
+
+Las fechas inválidas deben rechazarse:
+
+```         
+try:
+    with transaction.atomic():
+        Membership.objects.create(client=c, plan=p, start_date=date.today(), end_date=date.today() - timedelta(days=1))
+except IntegrityError as e:
+    print("Rechazado:", e)
+```
+
+![](images/clipboard-3699702407.png)
+
+Y la anulación:
+
+```         
+m.status = "active"
+m.save()
+m.void()
+m.refresh_from_db()
+pay.refresh_from_db()
+print(m.status, pay.status)
+```
+
+![](images/clipboard-3615357655.png)
+
+Debe imprimir `inactive inactive`. Para limpiar, en este orden:
+
+```         
+Attendance.objects.all().delete()
+Payment.objects.all().delete()
+Membership.objects.all().delete()
+Plan.objects.all().delete()
+Client.objects.all().delete()
+```
+
+![](images/clipboard-1620457832.png)
+
+#### Explicación
+
+La membresía es la tabla intermedia explícita entre clientes y planes: guarda sus propios datos (fechas y estado) y por eso no se usa un `ManyToManyField`. Para navegar se usan `membership.payments.all()` y `membership.attendances.all()`. Todas las claves foráneas usan `RESTRICT`, así que no se puede borrar un plan, un cliente o una membresía mientras existan registros que dependan de ellos.
+
+`void()` desactiva la membresía y sus pagos activos dentro de una transacción, y deja las asistencias intactas como historial. Solo la membresía y el pago tienen estado.
+
+```         
+Client 1 ───── N Membership N ───── 1 Plan Membership 1 ───── N Payment Membership 1 ───── N Attendance
+```
+
+#### Criterios de aceptación
+
+- **AC-06-01:** existen las tablas `memberships`, `payments` y `attendances`.
+
+- **AC-06-02:** las claves foráneas usan `RESTRICT`.
+
+- **AC-06-03:** la fecha de fin no puede ser anterior a la de inicio.
+
+- **AC-06-04:** anular una membresía desactiva la membresía y sus pagos.
+
+- **AC-06-05:** no hay `ManyToManyField` entre clientes y planes.
+
+#### Verificación
+
+La guía comprueba estos criterios con la migración y con pruebas de venta. Aquí se verifican con la migración aplicada y las pruebas del shell del Paso 4. Para confirmar el nombre de las tablas:
+
+```         
+python manage.py sqlmigrate membership 0001
+```
+
+![](images/clipboard-2014086677.png)
+
+#### GATE
+
+- **AC-06-01:** `sqlmigrate` muestra las tres tablas. **PASS**.
+
+- **AC-06-02:** `RestrictedError` al borrar el plan y la membresía. **PASS**.
+
+- **AC-06-03:** `IntegrityError` con fechas inválidas. **PASS**.
+
+- **AC-06-04:** `void()` deja `inactive inactive`. **PASS**.
+
+- **AC-06-05:** no hay `ManyToManyField` en `membership/models.py`. **P**
