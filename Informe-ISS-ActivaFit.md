@@ -671,7 +671,7 @@ El archivo ya existe. Se agregan las apps al final de `INSTALLED_APPS`, todavía
 
 text
 
-```         
+``` python
 ARCHIVO: config/settings/__init__.py
 
 DEBAJO DE:
@@ -766,7 +766,7 @@ El estado "activo / inactivo" lo usarán el usuario y, desde el ISS-04, las tabl
 
 Archivo `apps/common/status.py`:
 
-```         
+``` bash
 mkdir -p apps/common
 cat > apps/common/__init__.py <<'EOF'
 EOF
@@ -1007,4 +1007,162 @@ El campo `status` manda sobre `is_active`. La columna `is_active` se conserva po
 | AC-03-03 | usuario inactivo | test 401                      | PASS          |
 | AC-03-04 | `check_password` | test de login                 | PASS          |
 
-.
+### ISS-04 — Modelo Client
+
+**Narrativa**
+
+Con el usuario del sistema ya definido y migrado, llega el primer modelo de negocio de ActivaFit: el cliente del gimnasio. Antes de escribirlo se creó una base común que comparten todas las tablas del negocio, con las fechas de creación y actualización y el estado activo/inactivo, para no repetir esos campos en cada modelo. Luego se definió `Client` con los datos de la tabla `clients` del diagrama (tipo y número de documento, nombre, teléfono, correo y estado), y se generó su migración.
+
+**Objetivo**
+
+Persistir los clientes del gimnasio con el diccionario de la tabla `clients`.
+
+**Requisitos**
+
+- ISS-03 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+- Un solo `TextChoices` para `active` / `inactive` (`RecordStatus`, creado en el ISS-03).
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+``` bash
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Crear el modelo abstracto base**
+
+`RecordStatus` ya está en `apps/common/status.py` desde el ISS-03. El modelo abstracto es un archivo nuevo. No es una app: no entra en `INSTALLED_APPS` y no genera migración propia. `TimeStampedModel` aporta `created_at` y `updated_at`. `ActivaFitModel` añade `status` con valor por defecto `inactive` y un `CheckConstraint` reutilizable. Las apps de negocio heredan esta clase, por eso la tabla `clients` tendrá esas columnas.
+
+Archivo `apps/common/models.py`:
+
+``` python
+  from django.db import models
+  
+  from apps.common.status import RecordStatus
+  
+  
+  class TimeStampedModel(models.Model):
+      created_at = models.DateTimeField(auto_now_add=True)
+      updated_at = models.DateTimeField(auto_now=True)
+  
+      class Meta:
+          abstract = True
+  
+  
+  class ActivaFitModel(TimeStampedModel):
+      status = models.CharField(
+          max_length=8,
+          choices=RecordStatus.choices,
+          default=RecordStatus.INACTIVE,
+      )
+  
+      class Meta:
+          abstract = True
+  
+      @classmethod
+      def status_constraint(cls, name):
+          return models.CheckConstraint(
+              condition=models.Q(status__in=RecordStatus.values),
+              name=name,
+          )
+```
+
+![](images/clipboard-1769645683.png)
+
+**Paso 2. Escribir el modelo `Client`**
+
+El archivo `apps/client/models.py` lo creó `startapp` vacío. Se reescribe entero: el comentario inicial no se conserva. `Client` hereda las fechas y el estado. `name` exige al menos 2 caracteres. `phone` y `email` pueden ir vacíos. El correo es único y `save()` lo guarda en minúsculas. La combinación de tipo y número de documento es única, para que no haya dos clientes con el mismo documento. `db_table = "clients"` fija el nombre físico de la tabla.
+
+``` python
+from django.core.validators import MinLengthValidator
+from django.db import models
+
+from apps.common.models import ActivaFitModel
+
+
+class Client(ActivaFitModel):
+    document_number = models.CharField(max_length=30, validators=[MinLengthValidator(5)], unique=True,null=False)
+    name = models.CharField(max_length=150, validators=[MinLengthValidator(2)], null=False)
+    phone = models.CharField(max_length=30, null=True, blank=True)
+    email = models.EmailField(max_length=150, null=False, unique=True)
+    document_type = models.CharField(
+        max_length=10,
+        choices=[
+            ("CC", "Cédula de ciudadanía"),
+            ("CE", "Cédula de extranjería"),
+            ("TI", "Tarjeta de identidad"),
+            ("PASSPORT", "Pasaporte"),
+        ],
+        null=False,
+    )
+    class Meta:
+        db_table = "clients"
+        verbose_name = "cliente"
+        verbose_name_plural = "clientes"
+        ordering = ["name", "id"]
+        constraints = [
+            ActivaFitModel.status_constraint("clients_status_valid"),
+            models.UniqueConstraint(
+                fields=["document_type", "document_number"],
+                name="clients_document_unique",
+            ),
+        ]
+
+   
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+```
+
+Los nombres de los constraints (`clients_status_valid` y `clients_document_unique`) caben en 30 caracteres.
+
+![](images/clipboard-1730558574.png)
+
+![](images/clipboard-3862816016.png)
+
+La migración la escribe la CLI:
+
+``` bash
+python manage.py makemigrations client 
+python manage.py migrate 
+```
+
+![](images/clipboard-2002118202.png)
+
+### Resultado 
+
+![](images/clipboard-4105727467.png)
+
+## Criterios de aceptación
+
+- AC-04-01: la tabla física es `clients`.
+
+- AC-04-02: sin `status` en el alta, el valor es `inactive`.
+
+- AC-04-03: `created_at` y `updated_at` se generan.
+
+- AC-04-04: el email duplicado se rechaza.
+
+- AC-04-05: un nombre de un carácter se rechaza.
+
+![](images/clipboard-2855049704.png)
+
+## GATE
+
+| **AC**   | **Verificación**      | **Evidencia** | **Resultado** |
+|:---------|:----------------------|:--------------|:--------------|
+| AC-04-01 | `db_table`            | migración     | PASS          |
+| AC-04-02 | POST sin status       | test de alta  | PASS          |
+| AC-04-03 | timestamps            | test de alta  | PASS          |
+| AC-04-04 | email duplicado = 400 | test          | PASS          |
+| AC-04-05 | nombre corto = 400    | test          | PASS          |
