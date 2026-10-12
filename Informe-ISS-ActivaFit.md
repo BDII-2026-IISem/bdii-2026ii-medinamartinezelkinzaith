@@ -581,10 +581,10 @@ Con esto, ActivaFit quedó configurado para cambiar de motor con una sola variab
 
 | AC       | Verificación            | Evidencia | Resultado |
 |----------|-------------------------|-----------|-----------|
-| AC-01-01 | test por motor          | EVI-01-06 |  PASS     |
-| AC-01-02 | test de motor inválido  | EVI-01-06 |  PASS     |
-| AC-01-03 | test de variable vacía  | EVI-01-06 |  PASS     |
-| AC-01-04 | aserción `SERVICE_NAME` | EVI-01-06 |  PASS     |
+| AC-01-01 | test por motor          | EVI-01-06 | PASS      |
+| AC-01-02 | test de motor inválido  | EVI-01-06 | PASS      |
+| AC-01-03 | test de variable vacía  | EVI-01-06 | PASS      |
+| AC-01-04 | aserción `SERVICE_NAME` | EVI-01-06 | PASS      |
 
 ------------------------------------------------------------------------
 
@@ -727,10 +727,10 @@ tree apps -I "__pycache__"
 ### GATE
 
 | AC | Verificación | Evidencia | Resultado |
-|----|----|----|----|
+|------------------|------------------|------------------|------------------|
 | AC-02-01 | directorios de las apps | árbol de `apps/` (EVI-02-01) | PASS |
 | AC-02-02 | `manage.py check` | EVI-02-04 | PASS |
-| AC-02-03 | este ISS no escribe modelos | revisión de los `models.py` vacíos |  PASS |
+| AC-02-03 | este ISS no escribe modelos | revisión de los `models.py` vacíos | PASS |
 
 ## ISS-03 — Custom User antes de la primera migración
 
@@ -1139,7 +1139,7 @@ python manage.py migrate
 
 ![](images/clipboard-2002118202.png)
 
-### Resultado 
+### Resultado
 
 ![](images/clipboard-4105727467.png)
 
@@ -1791,9 +1791,9 @@ python -m pip install "djangorestframework==3.17.2" "djangorestframework-camel-c
 python -m pip freeze > requirements.txt
 ```
 
--  `djangorestframework` aporta los serializers, las vistas y el cliente de pruebas. Sin él, `from rest_framework import serializers` falla.
+- `djangorestframework` aporta los serializers, las vistas y el cliente de pruebas. Sin él, `from rest_framework import serializers` falla.
 
--  `djangorestframework-camel-case` convierte `created_at` en `createdAt` al responder, y al revés al recibir.
+- `djangorestframework-camel-case` convierte `created_at` en `createdAt` al responder, y al revés al recibir.
 
 `django-cors-headers` evita que un navegador en otro origen bloquee la API. En el laboratorio se permiten todos los orígenes; en producción se listan explícitamente.
 
@@ -2222,11 +2222,11 @@ CamelCaseJSONRenderer().render(RoutineSerializer(r).data)
 
 ![](images/clipboard-2073724203.png)
 
--  `s.validated_data["email"]` debe dar `'maria@example.com'` (AC-07-02).
+- `s.validated_data["email"]` debe dar `'maria@example.com'` (AC-07-02).
 
--  El primer `render` debe mostrar `createdAt` y `documentNumber` (AC-07-01).
+- El primer `render` debe mostrar `createdAt` y `documentNumber` (AC-07-01).
 
--  El segundo debe mostrar `trainerName` y `clientName` (AC-07-03).
+- El segundo debe mostrar `trainerName` y `clientName` (AC-07-03).
 
 Para limpiar:
 
@@ -2240,11 +2240,11 @@ c.delete()
 
 #### GATE
 
--  **AC-07-01:** el render muestra `createdAt`. **PASS**.
+- **AC-07-01:** el render muestra `createdAt`. **PASS**.
 
--  **AC-07-02:** el correo se guarda en minúsculas. **PASS**.
+- **AC-07-02:** el correo se guarda en minúsculas. **PASS**.
 
--  **AC-07-03:** `trainerName` y `clientName` aparecen en la rutina. **PASS**.
+- **AC-07-03:** `trainerName` y `clientName` aparecen en la rutina. **PASS**.
 
 ### ISS-08 — Client con ModelViewSet
 
@@ -2258,9 +2258,9 @@ Publicar el CRUD de clientes con el tipo de vista que corresponde a un recurso h
 
 **Requisitos**
 
--  ISS-07 superado.
+- ISS-07 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 En esta fase el CRUD se publica sin JWT: `permission_classes = [AllowAny]`. Más adelante se reemplaza por `IsAuthenticated` y `HasResourceAccess`. No se importa nada de `apps.security` todavía.
 
@@ -2544,13 +2544,13 @@ Swagger todavía no existe; llega más adelante con OpenAPI.
 
 #### Criterios de aceptación
 
--  **AC-08-01:** un POST válido responde 201.
+- **AC-08-01:** un POST válido responde 201.
 
--  **AC-08-02:** el registro queda en la tabla.
+- **AC-08-02:** el registro queda en la tabla.
 
--  **AC-08-03:** DELETE responde 204 y la fila sigue, con `status = inactive`.
+- **AC-08-03:** DELETE responde 204 y la fila sigue, con `status = inactive`.
 
--  **AC-08-04:** el cuerpo inválido responde 400.
+- **AC-08-04:** el cuerpo inválido responde 400.
 
 #### Verificación
 
@@ -2558,13 +2558,13 @@ Las pruebas de `ClientApiTests`, con el comando del Paso 5.
 
 #### GATE
 
--  **AC-08-01:** POST responde 201. **PASS**.
+- **AC-08-01:** POST responde 201. **PASS**.
 
--  **AC-08-02:** `Client.objects.get` encuentra el registro. **PASS**.
+- **AC-08-02:** `Client.objects.get` encuentra el registro. **PASS**.
 
--  **AC-08-03:** DELETE lógico, la fila permanece inactiva. **PASS**.
+- **AC-08-03:** DELETE lógico, la fila permanece inactiva. **PASS**.
 
--  **AC-08-04:** nombre inválido responde 400. **PASS**.
+- **AC-08-04:** nombre inválido responde 400. **PASS**.
 
 ### ISS-09 — Catálogo y seguimiento con ModelViewSet
 
@@ -2578,9 +2578,9 @@ Publicar los catálogos y el seguimiento de ActivaFit con el mismo criterio de C
 
 **Requisitos**
 
--  ISS-08 superado.
+- ISS-08 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -3035,3 +3035,218 @@ MeasurementApiTests  POST · GET · PATCH · DELETE real (204 y la fila desapare
 ![](images/clipboard-2142602300.png)
 
 Las membresías vigentes (ISS-10) y el registro de membresías (ISS-11) se prueban en sus propios ISS.
+
+### ISS-10 — Membresías vigentes con ListAPIView
+
+**Narrativa**
+
+Hasta ahora la API de ActivaFit solo ofrece CRUD completos. Pero el gimnasio necesita responder una pregunta que no es un CRUD: ¿qué membresías están vigentes hoy? Es una lectura filtrada, de solo consulta, con varias condiciones a la vez. Para ese caso se usó `ListAPIView`, una vista de DRF que serializa un queryset y expone únicamente el GET, sin crear, actualizar ni borrar. El filtro vive en `get_queryset`, y el endpoint queda en `/api/memberships/active/`, como una colección distinta de las membresías individuales.
+
+**Objetivo**
+
+Publicar una lectura filtrada que no es el CRUD de la membresía.
+
+**Requisitos**
+
+-  ISS-08 superado (la API de clientes ya funciona bajo `/api/`).
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  El endpoint debe justificar `GenericAPIView`: no se crea para completar un cuadro.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Escribir la vista**
+
+El archivo `apps/membership/views.py` ya existe (lo creó `startapp`, casi vacío). Se reescribe entero. `AllowAny` es el acceso abierto de esta fase; más adelante se reemplaza por autenticación y permisos por recurso.
+
+``` python
+from django.utils import timezone
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import AllowAny
+
+from apps.common.status import RecordStatus
+from apps.membership.models import Membership
+from apps.membership.serializers import MembershipSerializer
+
+
+class ActiveMembershipListAPIView(ListAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = MembershipSerializer
+
+    def get_queryset(self):
+        today = timezone.localdate()
+        return (
+            Membership.objects.select_related("client", "plan")
+            .prefetch_related("payments")
+            .filter(
+                status=RecordStatus.ACTIVE,
+                client__status=RecordStatus.ACTIVE,
+                plan__status=RecordStatus.ACTIVE,
+                start_date__lte=today,
+                end_date__gte=today,
+            )
+        )
+```
+
+![](images/clipboard-273105842.png)
+
+`select_related` y `prefetch_related` evitan una consulta extra por cada membresía al armar el nombre del cliente, el nombre del plan y los pagos.
+
+**Paso 2. Crear las rutas de la app**
+
+La app `membership` todavía no tiene `urls.py`. Se crea ahora, porque es su primer endpoint. Archivo `apps/membership/urls.py`:
+
+``` python
+from django.urls import path
+
+from apps.membership.views import ActiveMembershipListAPIView
+
+urlpatterns = [
+    path(
+        "memberships/active/",
+        ActiveMembershipListAPIView.as_view(),
+        name="membership-active",
+    ),
+]
+```
+
+![](images/clipboard-164343602.png)
+
+Cuando más adelante se agregue el router con el CRUD de membresías, esta ruta literal debe quedar **antes** de `router.urls`, con `urlpatterns += router.urls`. Con el convertidor `int`, la palabra `active` no cabe en `<int:pk>`, así que no habría choque; aun así, la ruta literal va primero para dejar claro que `active` es una colección distinta y no un identificador.
+
+**Paso 3. Conectar las rutas al proyecto**
+
+En `config/urls.py`, debajo de las líneas `path("api/", include(...))` que ya existan, agrega:
+
+```         
+    path("api/", include("apps.membership.urls")),
+```
+
+![](images/clipboard-3897234788.png)
+
+**Paso 4. Escribir la prueba**
+
+El archivo `apps/membership/tests.py` también existe, vacío. Se reescribe. Como todavía no hay una API para crear membresías, los datos de prueba se crean con el ORM en `setUp`, con todo activo y vigente. Después la prueba comprueba el filtro y vence la membresía cambiando su fecha de fin directamente en la tabla.
+
+``` python
+from datetime import timedelta
+
+from django.utils import timezone
+from rest_framework.test import APITestCase
+
+from apps.client.models import Client
+from apps.common.status import RecordStatus
+from apps.membership.models import Membership
+from apps.plan.models import Plan
+
+
+class MembershipAvailableTests(APITestCase):
+    def setUp(self):
+        today = timezone.localdate()
+        self.client_obj = Client.objects.create(
+            document_type="CC",
+            document_number="1234567890",
+            name="Cliente Prueba",
+            email="cliente@example.com",
+            status=RecordStatus.ACTIVE,
+        )
+        self.plan = Plan.objects.create(name="Plan Mensual", status=RecordStatus.ACTIVE)
+        self.membership = Membership.objects.create(
+            client=self.client_obj,
+            plan=self.plan,
+            start_date=today - timedelta(days=5),
+            end_date=today + timedelta(days=25),
+            status=RecordStatus.ACTIVE,
+        )
+
+    def test_active_membership_filter(self):
+        available = self.client.get("/api/memberships/active/")
+        self.assertEqual(available.status_code, 200)
+        self.assertEqual(len(available.data), 1)
+        self.assertEqual(available.data[0]["id"], self.membership.id)
+        Membership.objects.filter(pk=self.membership.pk).update(
+            end_date=timezone.localdate() - timedelta(days=1)
+        )
+        empty = self.client.get("/api/memberships/active/")
+        self.assertEqual(empty.status_code, 200)
+        self.assertEqual(empty.data, [])
+        self.assertEqual(Membership.objects.count(), 1)
+```
+
+![](images/clipboard-798204262.png)
+
+**Paso 5. Ejecutar la prueba**
+
+```         
+python manage.py test apps.membership.tests.MembershipAvailableTests
+```
+
+![](images/clipboard-2061502556.png)
+
+Debe terminar con `Ran 1 test` y `OK`. El acceso sigue siendo abierto: el GET no envía token.
+
+#### Explicación
+
+`ListAPIView` es `GenericAPIView` más `ListModelMixin`. Automatiza la serialización de un queryset y deja el filtro en `get_queryset`. Solo ofrece GET, a diferencia de un `ModelViewSet`, que obligaría a apagar los demás métodos, o de una `APIView`, que reescribiría un ciclo que el mixin ya resuelve.
+
+El filtro combina cinco condiciones: la membresía, el cliente y el plan deben estar activos, y la fecha de hoy debe caer entre el inicio y el fin. Por eso este endpoint no es un simple CRUD, y justifica tener su propia vista.
+
+``` texinfo
+GET /api/memberships/active/
+        │
+        ▼
+  ListAPIView
+        │
+        ▼
+  status active AND cliente active AND plan active
+  AND start_date <= hoy <= end_date
+```
+
+#### Cómo probarlo
+
+La prueba es de capa HTTP, con acceso abierto. Es un solo método de prueba: el GET comprueba que la membresía vigente aparece; luego, al poner su fecha de fin en el pasado, la lista queda vacía y la fila sigue existiendo en `memberships`.
+
+```         
+python manage.py test apps.membership.tests.MembershipAvailableTests
+        │
+        ▼
+setUp: cliente active + plan active + membresía vigente
+        │
+        ▼
+GET /api/memberships/active/     200   un elemento
+        │
+        ▼
+end_date = ayer (directo en la tabla)
+        │
+        ▼
+GET /api/memberships/active/     200   []
+```
+
+Si quieres verlo a mano, arranca el servidor y abre [`http://127.0.0.1:8000/api/memberships/active/`](http://127.0.0.1:8000/api/memberships/active/) en el navegador. Mostrará `[]` hasta que existan membresías vigentes. Swagger llega más adelante, con la unidad de OpenAPI.
+
+![](images/clipboard-3527626080.png)
+
+#### Criterios de aceptación
+
+-  **AC-10-01:** una membresía vigente, con cliente y plan activos, aparece en la lista.
+
+-  **AC-10-02:** al vencer (fecha de fin pasada), desaparece de esta lista y sigue en la tabla.
+
+#### Verificación
+
+`MembershipAvailableTests.test_active_membership_filter`.
+
+#### GATE
+
+-  **AC-10-01:** la membresía vigente aparece en la lista. **PASS**.
+
+-  **AC-10-02:** al vencer, la lista queda vacía y la fila permanece. **PASS**.

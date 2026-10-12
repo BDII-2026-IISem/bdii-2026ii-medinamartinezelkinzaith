@@ -24,4 +24,6 @@ urlpatterns = [
     path("api/", include("apps.trainer.urls")),
     path("api/", include("apps.routine.urls")),
     path("api/", include("apps.measurement.urls")),
+    path("api/", include("apps.membership.urls")),
+    
 ]
