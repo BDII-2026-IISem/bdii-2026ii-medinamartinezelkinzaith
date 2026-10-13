@@ -2,7 +2,13 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
 from config.database import database_from_environ
+from rest_framework import status
+from rest_framework.test import APITestCase
 
+from apps.common.status import RecordStatus
+from apps.common.testing import PASSWORD, create_active_user
+from apps.security.models import RefreshToken
+from apps.security.tokens import hash_token
 
 class DatabaseSelectionTests(SimpleTestCase):
     def _env(self, engine):
@@ -58,3 +64,47 @@ class DatabaseSelectionTests(SimpleTestCase):
         env["POSTGRES_DB"] = ""
         with self.assertRaises(ImproperlyConfigured):
             database_from_environ(env)
+
+class AuthFlowTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+
+    def test_login_with_username_and_email(self):
+        by_username = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.assertEqual(by_username.status_code, status.HTTP_200_OK)
+        self.assertIn("access", by_username.data)
+        self.assertIn("refresh", by_username.data)
+        self.assertNotIn("password", by_username.data)
+        stored = RefreshToken.objects.get()
+        self.assertEqual(stored.token_hash, hash_token(by_username.data["refresh"]))
+
+        by_email = self.client.post(
+            "/api/auth/login/",
+            {"email": "ANA@activafit.test", "password": PASSWORD},
+            format="json",
+        )
+        self.assertEqual(by_email.status_code, status.HTTP_200_OK)
+
+    def test_inactive_user_and_bad_password_are_401(self):
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        inactive = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.assertEqual(inactive.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.user.status = RecordStatus.ACTIVE
+        self.user.save()
+        bad = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": "otra-clave"},
+            format="json",
+        )
+        self.assertEqual(bad.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(bad.data["detail"], inactive.data["detail"])
