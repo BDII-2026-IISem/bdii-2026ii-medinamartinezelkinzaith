@@ -184,5 +184,48 @@ class AuthFlowTests(APITestCase):
         reused_logout = self.client.post("/api/auth/logout/", {"refresh": first}, format="json")
         self.assertEqual(reused_logout.status_code, status.HTTP_401_UNAUTHORIZED)
         after = self.client.post("/api/auth/refresh/", {"refresh": second}, format="json")
-        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)    
+        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)  
+
+    def test_profile_requires_token_and_rejects_inactive_user(self):
+        anonymous = self.client.get("/api/auth/profile/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        profile = self.client.get("/api/auth/profile/")
+        self.assertEqual(profile.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile.data["username"], "ana")
+        self.assertNotIn("password", profile.data)
+        patched = self.client.patch(
+            "/api/auth/profile/",
+            {"firstName": "Ana"},
+            format="json",
+        )
+        self.assertEqual(patched.status_code, status.HTTP_200_OK)
+        self.assertEqual(patched.data["first_name"], "Ana")
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        denied = self.client.get("/api/auth/profile/")
+        self.assertEqual(denied.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_patch_ignores_username_and_status(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        patched = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "otro", "status": "inactive", "lastName": "Pérez"},
+            format="json",
+        )
+        self.assertEqual(patched.status_code, status.HTTP_200_OK)
+        self.assertEqual(patched.data["username"], "ana")
+        self.assertEqual(patched.data["last_name"], "Pérez")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.status, RecordStatus.ACTIVE)  
 

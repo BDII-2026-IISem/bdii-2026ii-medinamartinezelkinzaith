@@ -172,3 +172,4 @@ class LogoutAPIView(APIView):
             stored.save(update_fields=["status", "revoked_at", "updated_at"])
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+

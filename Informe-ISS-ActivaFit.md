@@ -6059,3 +6059,285 @@ Debe mostrar `HTTP/1.1 401 Unauthorized` con `Refresh inválido.` Si te da 200, 
 -  **AC-19-03:** el segundo logout responde 204. **PASS**.
 
 -  **AC-19-04:** desconocido o rotado responde 401, y la familia queda revocada. **PASS**.
+
+### ISS-20 — Perfil JWT con token
+
+**Narrativa**
+
+Hasta ahora todos los endpoints de ActivaFit eran abiertos: el login, el refresh y el logout porque entregan o gastan tokens, y los de negocio porque todavía no había autenticación. En esta unidad empecé a exigir el access token con el segundo nivel de acceso, JWT con token. Para estrenarlo construí el perfil: un endpoint donde el usuario autenticado consulta y edita sus propios datos. El perfil responde a una sola pregunta, ¿quién es el que llama?, y no consulta la matriz de permisos; eso llega en el ISS-21. Además me aseguré de un detalle: aunque la firma del token siga siendo válida, si el usuario fue desactivado, el token deja de servir.
+
+**Objetivo**
+
+Responder quién es el llamador usando JWT: firma válida, vigencia y usuario activo. Sin consultar la matriz de permisos.
+
+**Requisitos**
+
+-  ISS-19 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Crear la autenticación propia**
+
+El archivo `apps/security/authentication.py` es nuevo. Extiende la clase de SimpleJWT para volver a leer el `status` del usuario después de validar la firma. El access token dura 60 minutos, y sin esta comprobación un usuario desactivado seguiría entrando hasta que el token venza.
+
+``` python
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import AuthenticationFailed
+
+from apps.common.status import RecordStatus
+
+
+class ActivaFitJWTAuthentication(JWTAuthentication):
+    def get_user(self, validated_token):
+        user = super().get_user(validated_token)
+        if user.status != RecordStatus.ACTIVE or not user.is_active:
+            raise AuthenticationFailed(
+                "El usuario no está active.",
+                code="user_inactive",
+            )
+        return user
+```
+
+![](images/clipboard-3984707201.png)
+
+**Paso 2. Activarla en `config/settings/__init__.py`**
+
+Dentro del diccionario `REST_FRAMEWORK`, encima de `DEFAULT_PERMISSION_CLASSES`, agregué:
+
+``` python
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.security.authentication.ActivaFitJWTAuthentication",
+    ],
+```
+
+![](images/clipboard-429388744.png)
+
+Con esto, toda la API lee el header `Authorization: Bearer ...` si viene. Los endpoints de negocio siguen en `AllowAny`, así que siguen funcionando sin token. El login, el refresh y el logout declaran `authentication_classes = []`, así que no cambian.
+
+**Paso 3. Agregar el serializer del perfil**
+
+El archivo `apps/security/serializers.py` ya existe. Primero agregué este import al inicio, debajo de `from rest_framework import serializers`:
+
+``` python
+from apps.security.models import User
+```
+
+Y agregué la clase nueva encima de `class LoginSerializer`. Expone `id`, `username`, `email`, `first_name`, `last_name` y `status`. El `username` y el `status` son de solo lectura (un usuario no puede darse de alta ni cambiarse el estado), y no incluye `password`.
+
+``` python
+class ProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "first_name", "last_name", "status"]
+        read_only_fields = ["id", "username", "status"]
+```
+
+![](images/clipboard-3953296738.png)
+
+**Paso 4. Crear la vista del perfil**
+
+El archivo `apps/security/rbac_views.py` es nuevo y en este ISS solo contiene el perfil. Los viewsets de la matriz se agregan en el ISS-23. `get_object` devuelve `request.user`: el perfil no lleva `pk` en la URL, porque el objeto es el usuario que llama.
+
+``` python
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+
+from apps.security.serializers import ProfileSerializer
+
+
+class ProfileAPIView(RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        return self.request.user
+```
+
+![](images/clipboard-3755075487.png)
+
+**Paso 5. Agregar la ruta**
+
+En `apps/security/urls.py` agregué este import debajo de los demás:
+
+``` python
+from apps.security.rbac_views import ProfileAPIView
+```
+
+Y debajo de la ruta del logout agregué:
+
+``` python
+    path("auth/profile/", ProfileAPIView.as_view(), name="auth-profile"),
+```
+
+![](images/clipboard-1081053834.png)
+
+El perfil no va al router del ISS-23. Un `ModelViewSet` de usuarios expondría `/api/users/<int:pk>/`, que es otro recurso y exige permisos por rol.
+
+**Paso 6. Agregar las pruebas**
+
+En la clase `AuthFlowTests` agregué estos dos métodos al final. El primero es el de la guía, con una comprobación extra de que la respuesta no trae `password` (criterio AC-20-02). El segundo es mío: comprueba que el perfil no deja cambiar el `username` ni el `status`.
+
+``` python
+    def test_profile_requires_token_and_rejects_inactive_user(self):
+        anonymous = self.client.get("/api/auth/profile/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        profile = self.client.get("/api/auth/profile/")
+        self.assertEqual(profile.status_code, status.HTTP_200_OK)
+        self.assertEqual(profile.data["username"], "ana")
+        self.assertNotIn("password", profile.data)
+        patched = self.client.patch(
+            "/api/auth/profile/",
+            {"firstName": "Ana"},
+            format="json",
+        )
+        self.assertEqual(patched.status_code, status.HTTP_200_OK)
+        self.assertEqual(patched.data["first_name"], "Ana")
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        denied = self.client.get("/api/auth/profile/")
+        self.assertEqual(denied.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_profile_patch_ignores_username_and_status(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        patched = self.client.patch(
+            "/api/auth/profile/",
+            {"username": "otro", "status": "inactive", "lastName": "Pérez"},
+            format="json",
+        )
+        self.assertEqual(patched.status_code, status.HTTP_200_OK)
+        self.assertEqual(patched.data["username"], "ana")
+        self.assertEqual(patched.data["last_name"], "Pérez")
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.status, RecordStatus.ACTIVE)
+```
+
+![](images/clipboard-1570312855.png)
+
+**Paso 7. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+```
+
+![](images/clipboard-3781084703.png)
+
+Debe terminar con `Ran 8 tests` y `OK`: dos del login, dos del refresh, dos del logout y estas dos del perfil. Con `python manage.py test apps.security` salen 14 pruebas, que incluyen las 6 de selección del motor. Conviene correr también las de negocio, para confirmar que activar la autenticación por defecto no rompió nada: `python manage.py test apps.client apps.plan apps.trainer apps.routine apps.measurement apps.membership` debe seguir dando 22 pruebas en `OK`, porque esos endpoints continúan abiertos.
+
+#### Explicación
+
+```         
+Bearer access
+      │
+      ▼
+firma + vigencia
+      │
+      ▼
+¿usuario active?
+      ├── no → 401
+      └── sí → IsAuthenticated → perfil
+```
+
+El segundo nivel de acceso, JWT con token, no ejecuta ningún permiso por rol. Un usuario autenticado lee su perfil aunque no tenga ningún rol asignado. Si ese mismo usuario llama a `/api/clients/` sin una concesión, el ISS-22 responderá 403: ahí el acceso pasa a ser JWT con token más permisos por rol.
+
+Reescribí `get_user` porque SimpleJWT solo confía en la firma: un access token ya emitido seguiría siendo válido 60 minutos aunque yo desactive al usuario. Con mi clase, apenas el usuario deja de estar activo, el mismo token responde 401, no 403: el 401 significa “no sé quién eres” y el 403 “sé quién eres, pero no tienes permiso”.
+
+La vista usa `RetrieveUpdateAPIView` porque el perfil solo lee y modifica un objeto, el que devuelve `get_object`. Con `http_method_names` dejé solo `get` y `patch`: no hay PUT, POST ni DELETE.
+
+#### Cómo probarlo
+
+Capa HTTP, nivel JWT con token. El test hace login para obtener el access y lo deja puesto en el header para el resto de las llamadas. No se usa ninguna concesión de la matriz, porque todavía no existe.
+
+El comando es uno solo, y el `OK` final es la comprobación:
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+```
+
+Lo que hace la prueba:
+
+```         
+GET   /api/auth/profile/                     sin header       401
+login → access
+GET   /api/auth/profile/                     con Bearer       200   username ana, sin password
+PATCH /api/auth/profile/  {firstName: Ana}   con Bearer       200
+usuario pasa a inactive
+GET   /api/auth/profile/                     el mismo Bearer  401                     el mismo Bearer  401
+```
+
+Si quieres verlo con tus propios ojos, usa dos terminales con el entorno activo. En la terminal 1 deja el servidor corriendo (`python manage.py runserver`). En la terminal 2, primero prueba el perfil sin token:
+
+```         
+curl -i http://127.0.0.1:8000/api/auth/profile/
+```
+
+![](images/clipboard-3318636571.png)
+
+![](images/clipboard-186256223.png)
+
+Debe mostrar `HTTP/1.1 401 Unauthorized`. Ahora haz login y copia el valor de `access`:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/login/ -H "Content-Type: application/json" -d '{"username":"TU_USUARIO","password":"TU_CLAVE"}'
+```
+
+![](images/clipboard-3696052293.png)
+
+Y llama al perfil con ese token, pegando el tuyo en lugar de `PEGA_AQUI_ACCESS`:
+
+```         
+curl -i http://127.0.0.1:8000/api/auth/profile/ -H "Authorization: Bearer PEGA_AQUI_ACCESS"
+```
+
+![](images/clipboard-4031876365.png)
+
+Debe mostrar `200 OK` con tus datos y sin `password`. Y para editar tu nombre:
+
+```         
+curl -X PATCH http://127.0.0.1:8000/api/auth/profile/ -H "Authorization: Bearer PEGA_AQUI_ACCESS" -H "Content-Type: application/json" -d '{"firstName":"Ana"}'
+```
+
+![](images/clipboard-2042517171.png)
+
+Ese cambio queda guardado en tu usuario real. En Swagger (`/api/schema/swagger-ui/`), por ahora solo puedes ver que `GET /api/auth/profile/` sin header responde 401: el botón Authorize para pegar el token se registra en el ISS-24.
+
+#### Criterios de aceptación
+
+-  **AC-20-01:** sin header, GET del perfil responde 401.
+
+-  **AC-20-02:** con un access válido responde 200 y no incluye `password`.
+
+-  **AC-20-03:** el PATCH de `firstName` se guarda.
+
+-  **AC-20-04:** si el usuario pasa a `inactive`, el mismo access responde 401.
+
+- **AC-20-05:** el PATCH no puede cambiar `username` ni `status`.
+
+#### Verificación
+
+`test_profile_requires_token_and_rejects_inactive_user` y `test_profile_patch_ignores_username_and_status`, con el comando del Paso 7.
+
+#### GATE
+
+-  **AC-20-01:** anónimo, 401. **PASS**.
+
+-  **AC-20-02:** perfil sin `password`. **PASS**.
+
+-  **AC-20-03:** PATCH guardado. **PASS**.
+
+-  **AC-20-04:** usuario desactivado, 401. **PASS**.
+
+-  **AC-20-05:** `username` y `status` de solo lectura. **PASS**.
