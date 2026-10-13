@@ -3,7 +3,7 @@
 El paquete sustituye al settings.py generado por startproject.
 DJANGO_SETTINGS_MODULE sigue siendo config.settings.
 """
-
+from datetime import timedelta
 import os
 from pathlib import Path
 
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.routine.apps.RoutineConfig",
     "apps.membership.apps.MembershipConfig",
     "rest_framework",
+    "rest_framework_simplejwt",
     "drf_spectacular",
     "corsheaders",
     "apps.security.apps.SecurityConfig",
@@ -132,4 +133,16 @@ SPECTACULAR_SETTINGS = {
     ],
     "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
     "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
+}
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
 }

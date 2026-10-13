@@ -4680,3 +4680,255 @@ swagger-ui                        sin token
 -  **AC-14-02:** `SERVE_PERMISSIONS` en `AllowAny`. **PASS**.
 
 -  **AC-14-03:** el hook camelCase está en `SPECTACULAR_SETTINGS`. **PASS**.
+
+### ISS-15 — RefreshToken
+
+**Narrativa**
+
+Con la Fase I cerrada, empecé la parte de seguridad de ActivaFit. Lo primero que necesitaba era decidir cómo recordar las sesiones. El access token (el que se manda en cada petición) es un JWT y se verifica solo con su firma y su fecha de expiración, así que no necesita una fila en la base de datos. El refresh token (el que sirve para pedir un access nuevo) sí tiene que poder revocarse, y para eso necesita guardarse. Para guardarlo creé la tabla `refresh_tokens`, pero no guardo el token en claro: guardo su hash SHA-256. Así, si alguien viera la tabla, no podría usar esos valores como sesiones. Tampoco usé la lista negra de SimpleJWT: la rotación de tokens la implemento yo, con mi propia tabla.
+
+**Objetivo**
+
+Persistir la sesión de refresh sin guardar el token en claro y sin usar la lista negra (blacklist) de SimpleJWT como almacén.
+
+**Requisitos**
+
+-  Cierre de la Fase I superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  El modelo `User` ya existe desde el ISS-03.
+
+#### Construcción
+
+**Paso 0. Activar el entorno e instalar SimpleJWT**
+
+SimpleJWT entra aquí, antes del login. Solo lo uso para emitir y verificar el access token. No instalo `rest_framework_simplejwt.token_blacklist`: el refresh de ActivaFit vive en la tabla `refresh_tokens`, no en esa app.
+
+```         
+source .venv/bin/activate 
+python -m pip install "djangorestframework-simplejwt==5.5.1" 
+python -m pip freeze > requirements.txt
+```
+
+![](images/clipboard-1649738058.png)
+
+El paquete en pip es `djangorestframework-simplejwt`, y en `INSTALLED_APPS` el nombre es `rest_framework_simplejwt`. `PyJWT` llega como dependencia, así que no lo instalo aparte.
+
+**Paso 1. Crear `apps/security/tokens.py`**
+
+Es un archivo nuevo. Genera el valor del refresh con `secrets.token_urlsafe` y calcula su hash SHA-256 en hexadecimal.
+
+``` python
+import hashlib
+import secrets
+
+
+def generate_refresh_value():
+    return secrets.token_urlsafe(48)
+
+
+def hash_token(raw_token):
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+```
+
+![](images/clipboard-4158612146.png)
+
+**Paso 2. Agregar el modelo `RefreshToken`**
+
+El archivo `apps/security/models.py` ya tiene `User`, y no se reescribe. Primero reemplacé la primera línea de imports, `from django.contrib.auth.models import AbstractUser, UserManager`, por este bloque:
+
+``` python
+import uuid
+
+from django.conf import settings
+from django.contrib.auth.models import AbstractUser, UserManager
+from django.utils import timezone
+```
+
+Las demás líneas de imports (`from django.db import models` y `from apps.common.status import RecordStatus`) se quedan como estaban. Después pegué la clase `RefreshToken` al final del archivo, debajo de `User`:
+
+``` python
+class RefreshToken(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.RESTRICT,
+        related_name="refresh_tokens",
+        db_column="user_id",
+    )
+    token_hash = models.CharField(max_length=64, unique=True)
+    family_id = models.UUIDField(default=uuid.uuid4, editable=False, db_index=True)
+    expires_at = models.DateTimeField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    replaced_by = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="replacements",
+    )
+    status = models.CharField(
+        max_length=8,
+        choices=RecordStatus.choices,
+        default=RecordStatus.ACTIVE,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "refresh_tokens"
+        ordering = ["-created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="refresh_tokens_status_valid",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user} {self.family_id}"
+
+    @property
+    def is_usable(self):
+        return (
+            self.status == RecordStatus.ACTIVE
+            and self.revoked_at is None
+            and self.replaced_by_id is None
+            and self.expires_at > timezone.now()
+        )
+
+    @classmethod
+    def lifetime(cls):
+        return settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]
+
+    @classmethod
+    def default_expiry(cls):
+        return timezone.now() + cls.lifetime()
+```
+
+![](images/clipboard-1019814411.png)
+
+**Paso 3. Parchear `config/settings/__init__.py`**
+
+Encima de la línea `import os` agregué:
+
+```         
+from datetime import timedelta
+```
+
+Debajo de `"rest_framework",` en `INSTALLED_APPS` agregué:
+
+```         
+    "rest_framework_simplejwt",
+```
+
+Y al final del archivo agregué:
+
+``` python
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
+    "ROTATE_REFRESH_TOKENS": False,
+    "BLACKLIST_AFTER_ROTATION": False,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+```
+
+![](images/clipboard-3088702608.png)
+
+`ROTATE_REFRESH_TOKENS` y `BLACKLIST_AFTER_ROTATION` quedan en `False` porque la rotación es mía, no la de SimpleJWT. El `SIGNING_KEY` usa la `SECRET_KEY` que ya está definida más arriba en el archivo.
+
+**Paso 4. Generar la migración y migrar**
+
+```         
+python manage.py makemigrations security 
+python manage.py migrate
+```
+
+Debe crear la migración `0002` de `security` y aplicarla. La tabla se llama `refresh_tokens`.
+
+![](images/clipboard-3210762538.png)
+
+**Paso 5. Verificar el sistema**
+
+```         
+python manage.py check
+```
+
+![](images/clipboard-1733632345.png)
+
+#### Explicación
+
+El access token es un JWT: se verifica con la firma y la expiración, y no necesita una fila. El refresh tiene que poder revocarse, así que necesita estado en la base de datos. Si guardara el refresh en claro, la tabla serviría como si fuera la sesión misma. El hash SHA-256 no se puede invertir: para usarlo haría falta el valor original, que solo ve el cliente en la respuesta del login.
+
+```         
+refresh en claro  --solo en la respuesta--
+        │
+        ▼
+SHA-256 → refresh_tokens.token_hash
+```
+
+Los campos `family_id` y `replaced_by` no se usan todavía: sirven para la rotación, que llega con el ISS-18. `family_id` agrupa todos los tokens que descienden de un mismo login, y `replaced_by` apunta al token que reemplazó a otro. La propiedad `is_usable` junta las condiciones para aceptar un refresh: activo, sin revocar, sin reemplazar y sin vencer.
+
+El `status` de este modelo nace `active`, y es la excepción del proyecto: el token acaba de nacer de un login válido, mientras que el resto de entidades nace `inactive`. La clave foránea a `User` usa `RESTRICT`, así que no se puede borrar un usuario que tenga tokens.
+
+#### Criterios de aceptación
+
+-  **AC-15-01:** después del login hay una fila y su `token_hash` no es el refresh devuelto.
+
+-  **AC-15-02:** el hash coincide con el SHA-256 del valor devuelto.
+
+-  **AC-15-03:** la respuesta del login no contiene `password`.
+
+#### Verificación
+
+La guía comprueba estos criterios con `AuthFlowTests.test_login_with_username_and_email`, pero esa prueba necesita el endpoint de login, que se construye en el ISS-17. Por ahora verifico el modelo y el hash en la consola de Django:
+
+```         
+python manage.py shell
+```
+
+```         
+import hashlib
+from apps.security.models import RefreshToken, User
+from apps.security.tokens import generate_refresh_value, hash_token
+
+user = User.objects.create_user(username="prueba_rt", email="rt@activafit.com", password="Prueba123*")
+raw = generate_refresh_value()
+rt = RefreshToken.objects.create(user=user, token_hash=hash_token(raw), expires_at=RefreshToken.default_expiry())
+rt.token_hash != raw
+len(rt.token_hash)
+rt.token_hash == hashlib.sha256(raw.encode()).hexdigest()
+rt.status
+rt.is_usable
+```
+
+-  `rt.token_hash != raw` debe dar `True`: lo guardado no es el valor en claro.
+
+-  `len(rt.token_hash)` debe dar `64`.
+
+-  La comparación con `hashlib` debe dar `True`: el hash coincide con el SHA-256 del valor.
+
+-  `rt.status` debe dar `'active'` y `rt.is_usable` debe dar `True`.
+
+Para limpiar, en este orden, porque la clave foránea es `RESTRICT`:
+
+```         
+rt.delete() 
+user.delete()
+```
+
+![](images/clipboard-615121721.png)
+
+#### GATE
+
+-  **AC-15-01:** la fila existe y su hash es distinto del valor en claro (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
+
+- **AC-15-02:** el hash coincide con el SHA-256 (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
+
+- **AC-15-03:** la respuesta sin `password` depende del endpoint de login. **Pendiente** hasta el ISS-17.
