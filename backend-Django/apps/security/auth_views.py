@@ -2,6 +2,8 @@ import uuid
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction 
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny
@@ -11,7 +13,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.common.status import RecordStatus
 from apps.security.models import RefreshToken
-from apps.security.serializers import LoginSerializer, TokenPairSerializer
+from apps.security.serializers import LoginSerializer, RefreshSerializer, TokenPairSerializer
 from apps.security.tokens import generate_refresh_value, hash_token
 
 User = get_user_model()
@@ -74,3 +76,60 @@ def _find_user(username, email):
     if email:
         return User.objects.filter(email__iexact=email).first()
     return None
+
+class RefreshAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=RefreshSerializer,
+        responses={200: TokenPairSerializer},
+        auth=[],
+    )
+    def post(self, request):
+        serializer = RefreshSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token_hash = hash_token(serializer.validated_data["refresh"])
+        invalid = Response(
+            {"detail": "Refresh inválido."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+        now = timezone.now()
+
+        with transaction.atomic():
+            stored = RefreshToken.objects.select_for_update().filter(token_hash=token_hash).first()
+            if stored is None:
+                return invalid
+
+            if (
+                stored.replaced_by_id is not None
+                or stored.revoked_at is not None
+                or stored.status != RecordStatus.ACTIVE
+            ):
+                _revoke_family(stored.family_id, now)
+                return invalid
+
+            if stored.expires_at <= now:
+                stored.status = RecordStatus.INACTIVE
+                stored.save(update_fields=["status", "updated_at"])
+                return invalid
+
+            user = stored.user
+            if user.status != RecordStatus.ACTIVE:
+                stored.status = RecordStatus.INACTIVE
+                stored.save(update_fields=["status", "updated_at"])
+                return invalid
+
+            new_stored, raw_refresh = issue_refresh(user, family_id=stored.family_id)
+            stored.replaced_by = new_stored
+            stored.save(update_fields=["replaced_by", "updated_at"])
+
+        return Response(token_payload(user, raw_refresh), status=status.HTTP_200_OK)
+
+
+def _revoke_family(family_id, now):
+    RefreshToken.objects.filter(family_id=family_id, revoked_at__isnull=True).update(
+        revoked_at=now,
+        status=RecordStatus.INACTIVE,
+        updated_at=now,
+    )

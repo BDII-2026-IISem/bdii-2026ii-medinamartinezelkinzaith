@@ -5529,3 +5529,309 @@ Debe responder con `access`, `refresh`, `tokenType` y `accessExpiresIn` (en came
 -  **AC-17-04:** clave incorrecta. **PASS**.
 
 -  **AC-17-05:** sin `password` en la respuesta. **PASS**.
+
+### ISS-18 — Refresh con rotación
+
+**Narrativa**
+
+El login me entregó un refresh token, pero un refresh que se puede usar mil veces es casi una contraseña de larga duración: si alguien lo roba, tiene la sesión para siempre. En esta unidad hice que cada refresh sirva una sola vez. Cuando el cliente lo presenta, le entrego un par nuevo y dejo marcado el viejo como reemplazado. Y si alguien presenta un token que ya fue reemplazado, asumo lo peor: que hay dos copias circulando. En ese caso apago toda la familia de tokens, incluida la que acababa de entregar al cliente legítimo, que tendrá que volver a hacer login. Prefiero molestar a un usuario honesto antes que dejar viva una sesión robada.
+
+**Objetivo**
+
+Cambiar el refresh en cada uso y tratar la reutilización de uno viejo como una revocación de toda la familia.
+
+**Requisitos**
+
+-  SS-17 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Agregar la ruta**
+
+En `apps/security/urls.py` cambié el import de las vistas, que ahora trae también `RefreshAPIView`:
+
+```         
+from apps.security.auth_views import LoginAPIView, RefreshAPIView
+```
+
+Y debajo de la ruta del login agregué:
+
+``` python
+path("auth/refresh/", RefreshAPIView.as_view(), name="auth-refresh"),
+```
+
+![](images/clipboard-1252122224.png)
+
+`config/urls.py` no se toca: el `include` del ISS-17 ya entrega `api/` a esta lista.
+
+**Paso 2. Agregar la vista a `auth_views.py`**
+
+El archivo ya existe. Primero ajusté los imports. Debajo de la línea `from django.contrib.auth import get_user_model` agregué:
+
+``` python
+from django.db import transaction 
+from django.utils import timezone
+```
+
+Y reemplacé la línea `from apps.security.serializers import LoginSerializer, TokenPairSerializer` por:
+
+```         
+from apps.security.serializers import LoginSerializer, RefreshSerializer,
+TokenPairSerializer
+```
+
+Después agregué la clase nueva y una función auxiliar encima de `def _find_user`. La vista es abierta (sin autenticación, como el login) y busca el token por su hash dentro de una transacción, con `select_for_update` para que dos peticiones simultáneas con el mismo refresh no pasen las dos. Cuando devuelvo el 401 dentro del bloque `atomic`, la transacción se confirma, y por eso la revocación de la familia sí queda guardada.
+
+``` python
+class RefreshAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=RefreshSerializer,
+        responses={200: TokenPairSerializer},
+        auth=[],
+    )
+    def post(self, request):
+        serializer = RefreshSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token_hash = hash_token(serializer.validated_data["refresh"])
+        invalid = Response(
+            {"detail": "Refresh inválido."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+        now = timezone.now()
+
+        with transaction.atomic():
+            stored = RefreshToken.objects.select_for_update().filter(token_hash=token_hash).first()
+            if stored is None:
+                return invalid
+
+            if (
+                stored.replaced_by_id is not None
+                or stored.revoked_at is not None
+                or stored.status != RecordStatus.ACTIVE
+            ):
+                _revoke_family(stored.family_id, now)
+                return invalid
+
+            if stored.expires_at <= now:
+                stored.status = RecordStatus.INACTIVE
+                stored.save(update_fields=["status", "updated_at"])
+                return invalid
+
+            user = stored.user
+            if user.status != RecordStatus.ACTIVE:
+                stored.status = RecordStatus.INACTIVE
+                stored.save(update_fields=["status", "updated_at"])
+                return invalid
+
+            new_stored, raw_refresh = issue_refresh(user, family_id=stored.family_id)
+            stored.replaced_by = new_stored
+            stored.save(update_fields=["replaced_by", "updated_at"])
+
+        return Response(token_payload(user, raw_refresh), status=status.HTTP_200_OK)
+
+
+def _revoke_family(family_id, now):
+    RefreshToken.objects.filter(family_id=family_id, revoked_at__isnull=True).update(
+        revoked_at=now,
+        status=RecordStatus.INACTIVE,
+        updated_at=now,
+    )
+```
+
+![](images/clipboard-3020396059.png)
+
+La decisión de cada caso queda así:
+
+```         
+no existe                         → 401
+ya rotado, revocado o inactivo    → revoca la familia → 401
+vencido                           → inactiva ese token → 401
+usuario inactive                  → inactiva ese token → 401
+vigente                           → emite otro par de la misma familia
+                                    y marca el anterior replaced_by
+```
+
+**Paso 3. Agregar las pruebas**
+
+Las pruebas siguen siendo abiertas y entran en la clase `AuthFlowTests` del ISS-17. Primero agregué dos imports al inicio de `apps/security/tests.py`, encima de las demás líneas de import:
+
+```         
+from datetime import timedelta  
+from django.utils import timezone
+```
+
+Después agregué estos dos métodos al final de la clase `AuthFlowTests`. El primero es el de la guía. El segundo es mío: comprueba que un token vencido no revoca la familia y que un usuario inactivo no puede renovar.
+
+``` python
+    def test_refresh_rotates_and_reuse_revokes_family(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        first = login.data["refresh"]
+        rotated = self.client.post("/api/auth/refresh/", {"refresh": first}, format="json")
+        self.assertEqual(rotated.status_code, status.HTTP_200_OK)
+        second = rotated.data["refresh"]
+        self.assertNotEqual(first, second)
+        reused = self.client.post("/api/auth/refresh/", {"refresh": first}, format="json")
+        self.assertEqual(reused.status_code, status.HTTP_401_UNAUTHORIZED)
+        after_reuse = self.client.post("/api/auth/refresh/", {"refresh": second}, format="json")
+        self.assertEqual(after_reuse.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_refresh_expired_or_inactive_user_is_401(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        RefreshToken.objects.update(expires_at=timezone.now() - timedelta(seconds=1))
+        expired = self.client.post(
+            "/api/auth/refresh/", {"refresh": login.data["refresh"]}, format="json"
+        )
+        self.assertEqual(expired.status_code, status.HTTP_401_UNAUTHORIZED)
+        stored = RefreshToken.objects.get()
+        self.assertEqual(stored.status, RecordStatus.INACTIVE)
+        self.assertIsNone(stored.revoked_at)
+
+        second_login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        inactive = self.client.post(
+            "/api/auth/refresh/", {"refresh": second_login.data["refresh"]}, format="json"
+        )
+        self.assertEqual(inactive.status_code, status.HTTP_401_UNAUTHORIZED)
+```
+
+![](images/clipboard-875525774.png)
+
+**Paso 4. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+```
+
+![](images/clipboard-2972640237.png)
+
+Debe terminar con `Ran 4 tests` y `OK`: los dos del login (ISS-17) y los dos de esta unidad. Si corres `python manage.py test apps.security`, deben salir 10 pruebas (las 6 de selección del motor más estas 4).
+
+#### Explicación
+
+Rotar el refresh sin detectar el reuso no sirve de mucho: el token robado seguiría vivo. Por eso, si llega un token que ya fue reemplazado, asumo que alguien más lo tiene y apago todos los de esa `family_id`, incluido el que acababa de entregar al cliente legítimo. Ese cliente tendrá que volver a iniciar sesión. Es una política que elegí yo, y no depende de la lista negra de SimpleJWT.
+
+El vencimiento, en cambio, no revoca la familia: que un token haya caducado no demuestra que alguien lo copió, solo que el usuario tardó en volver. Por eso en ese caso solo desactivo ese token. El usuario inactivo recibe el mismo trato. Y en todos los casos de rechazo respondo con un 401 genérico, sin decir cuál fue el motivo.
+
+La vista usa `select_for_update` dentro de una transacción para que dos peticiones simultáneas con el mismo refresh no puedan rotarlo las dos: la segunda espera, ve el token ya reemplazado y dispara la revocación.
+
+#### Cómo probarlo
+
+Capa HTTP, acceso abierto. El test hace login para obtener un refresh y no usa el access. Después hace tres POST a la misma ruta.
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+        │
+        ▼
+login  →  refresh A
+        │
+        ▼
+POST /api/auth/refresh/   {refresh: A}     200   devuelve B, A queda con replaced_by
+        │
+        ▼
+POST /api/auth/refresh/   {refresh: A}     401   reuso: se apaga la familia
+        │
+        ▼
+POST /api/auth/refresh/   {refresh: B}     401   B también murió con la familia
+```
+
+También lo puedes ver a mano en Swagger (`/api/schema/swagger-ui/`), sin autorizar nada: haz login, copia el `refresh`, y llama tres veces a `POST /api/auth/refresh/` con A, otra vez con A y luego con B. Debes ver 200, 401 y 401.
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/login/ -H "Content-Type: application/json" -d '{"username":"admin","password":"1234"}'
+```
+
+![](images/clipboard-1059731764.png)
+
+Te responde algo como esto. Copia el valor de `refresh`: esa es tu llave **A**.
+
+```         
+    "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzkxODY1ODkyLCJpYXQiOjE3OTE4NjIyOTIsImp0aSI6IjhmMGM1OGRjNzFmNDQ0YmU5YTEyMmZkZDIwYmFlNWIyIiwidXNlcl9pZCI6IjIifQ.y8HfVtD8oYSbV8_DAn3mIGNcZSPndqhfqkjSI8fsrn0",
+    "refresh": "q2yG_Nchvey_Y8EcF4T30ZMMdSuYHj5v-99cShYvwd-DeAgdH37scSICtJze8ulM",
+    "tokenType": "Bearer",
+    "accessExpiresIn": 3600
+}
+```
+
+Ahora presenta la llave A (pega tu valor en lugar de `PEGA_AQUI_A`):
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/refresh/ -H "Content-Type: application/json" -d '{"refresh":"q2yG_Nchvey_Y8EcF4T30ZMMdSuYHj5v-99cShYvwd-DeAgdH37scSICtJze8ulM"}'
+```
+
+![](images/clipboard-1945958738.png)
+
+Debe responder 200 con un par nuevo. El `refresh` nuevo es la llave **B**. Guárdala.
+
+Repite exactamente el mismo comando con la **A** otra vez:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/refresh/ -H "Content-Type: application/json" -d '{"q2yG_Nchvey_Y8EcF4T30ZMMdSuYHj5v-99cShYvwd-DeAgdH37scSICtJze8ulM"}'
+```
+
+![](images/clipboard-3763967992.png)
+
+Ahora debe responder:
+
+```         
+{"detail":"Refresh inválido."}
+```
+
+Eso es el 401: la A ya estaba gastada. Por último, prueba la **B**:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/refresh/ -H "Content-Type: application/json" -d '{"refresh":"PEGA_AQUI_B"}'
+```
+
+![](images/clipboard-3763967992.png)
+
+tambien debe responder:
+
+```         
+{"detail":"Refresh inválido."}
+```
+
+#### Criterios de aceptación
+
+-  **AC-18-01:** el segundo refresh es distinto del primero, y el primero responde 200 la primera vez.
+
+-  **AC-18-02:** reusar el primero responde 401.
+
+-  **AC-18-03:** el segundo, ya con la familia comprometida, también responde 401.
+
+-  **AC-18-04:** un refresh vencido responde 401 y no revoca la familia.
+
+- **AC-18-05:** un usuario inactivo no puede renovar: responde 401.
+
+#### Verificación
+
+`test_refresh_rotates_and_reuse_revokes_family` y `test_refresh_expired_or_inactive_user_is_401`, con el comando del Paso 4.
+
+#### GATE
+
+-  **AC-18-01:** rotación. **PASS**.
+
+-  **AC-18-02:** reuso. **PASS**.
+
+-  **AC-18-03:** familia revocada. **PASS**.
+
+-  **AC-18-04:** vencido sin revocar la familia. **PASS**.
+
+-  **AC-18-05:** usuario inactivo. **PASS**.
