@@ -4004,3 +4004,441 @@ python manage.py test apps.membership
 -  **AC-12-04:** anular dos veces no cambia nada más y las asistencias se conservan.
 
 -  **AC-12-05:** el CRUD de asistencias funciona, el DELETE elimina la fila y una membresía inexistente responde 400.
+
+### ISS-13 — Django Admin
+
+**Narrativa**
+
+En esta unidad dejé el admin de Django listo para explorar los datos de ActivaFit. Ya tenía la API, pero me faltaba una forma cómoda de mirar las tablas, buscar un cliente, filtrar por estado o corregir un dato de catálogo sin armar una petición a mano. Registré las diez tablas de negocio con listas que se pueden filtrar, buscar y ordenar, y con formularios agrupados. Hay una regla que respeté: las membresías y los pagos no se crean ni se borran desde el admin, porque nacen de una transacción (`register`) que valida al cliente, al plan y las fechas, y se anulan con `void()`. Si las editara a mano en el admin me saltaría todas esas reglas.
+
+**Objetivo**
+
+Dejar las tablas de ActivaFit explorables en el admin: listas filtrables, con búsqueda y orden, y formularios agrupados. Las membresías y los pagos se inspeccionan, no se rearman desde aquí.
+
+**Requisitos**
+
+-  ISS-12 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  `django.contrib.admin` en `INSTALLED_APPS`, que `startproject` ya incluye, y la ruta `admin/` en `config/urls.py`, que existe desde el ISS-00.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+![](images/clipboard-117842089.png)
+
+**Paso 1. Crear el superusuario**
+
+```         
+python manage.py createsuperuser
+```
+
+Django pregunta usuario, correo y contraseña (dos veces). Los validadores rechazan una clave común o solo numérica, así que la contraseña debe cumplirlos. Mi `ActivaFitUserManager.create_superuser` fuerza `status=active`; sin eso el admin no me dejaría entrar, porque `is_active` se copia del estado. Si ya creaste un superusuario antes, este paso no hace falta.
+
+![](images/clipboard-3522673968.png)
+
+**Paso 2. Admin de `client`**
+
+`startapp` ya creó `apps/client/admin.py` con un comentario, así que reescribí el archivo entero. `Client` no tiene contraseña: no es un usuario del sistema, así que el formulario no pide credenciales.
+
+``` python
+from django.contrib import admin
+
+from apps.client.models import Client
+
+
+@admin.register(Client)
+class ClientAdmin(admin.ModelAdmin):
+    list_display = (
+        "name",
+        "document_type",
+        "document_number",
+        "email",
+        "phone",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "document_type")
+    search_fields = ("name", "document_number", "email", "phone")
+    list_editable = ("status",)
+    ordering = ("name", "email")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Información del cliente",
+            {"fields": ("document_type", "document_number", "name", "email", "phone")},
+        ),
+        ("Estado", {"fields": ("status",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+```
+
+![](images/clipboard-1852274450.png)
+
+**Paso 3. Admin de `trainer` y `plan`**
+
+Archivo `apps/trainer/admin.py`:
+
+``` python
+from django.contrib import admin
+
+from apps.trainer.models import Trainer
+
+
+@admin.register(Trainer)
+class TrainerAdmin(admin.ModelAdmin):
+    list_display = ("name", "specialty", "email", "phone", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("name", "email", "phone", "specialty")
+    list_editable = ("status",)
+    ordering = ("name",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Información del entrenador",
+            {"fields": ("name", "specialty", "email", "phone")},
+        ),
+        ("Estado", {"fields": ("status",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    ))
+```
+
+![](images/clipboard-2662137461.png)
+
+Archivo `apps/plan/admin.py`:
+
+``` python
+from django.contrib import admin
+
+from apps.plan.models import Plan
+
+
+@admin.register(Plan)
+class PlanAdmin(admin.ModelAdmin):
+    list_display = ("name", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("name", "description")
+    list_editable = ("status",)
+    ordering = ("name",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("name", "description", "status")}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+```
+
+![](images/clipboard-332302211.png)
+
+**Paso 4. Admin de `routine`**
+
+Archivo `apps/routine/admin.py`. Uso `autocomplete_fields` para elegir cliente, entrenador, rutina y ejercicio con un buscador en vez de un desplegable enorme. Django solo lo acepta si el admin del modelo relacionado define `search_fields`, y todos los míos lo hacen. `get_queryset` con `select_related` evita consultar las relaciones una vez por fila.
+
+``` python
+from django.contrib import admin
+
+from apps.routine.models import Exercise, Routine, RoutineExercise
+
+
+@admin.register(Exercise)
+class ExerciseAdmin(admin.ModelAdmin):
+    list_display = ("name", "muscle_group", "status", "created_at")
+    list_filter = ("status", "muscle_group")
+    search_fields = ("name", "description", "muscle_group")
+    list_editable = ("status",)
+    ordering = ("name",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (None, {"fields": ("name", "description", "muscle_group", "status")}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+
+@admin.register(Routine)
+class RoutineAdmin(admin.ModelAdmin):
+    list_display = ("name", "client", "trainer", "status", "created_at")
+    list_filter = ("status",)
+    search_fields = ("name", "client__name", "trainer__name")
+    list_editable = ("status",)
+    ordering = ("name",)
+    autocomplete_fields = ("client", "trainer")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Información", {"fields": ("name", "description", "client", "trainer")}),
+        ("Estado", {"fields": ("status",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("client", "trainer")
+
+
+@admin.register(RoutineExercise)
+class RoutineExerciseAdmin(admin.ModelAdmin):
+    list_display = (
+        "routine",
+        "exercise",
+        "sets",
+        "repetitions",
+        "weight",
+        "rest_seconds",
+        "status",
+    )
+    list_filter = ("status", "muscle_group")
+    search_fields = ("routine__name", "exercise__name", "name")
+    list_editable = ("sets", "repetitions", "weight", "rest_seconds", "status")
+    autocomplete_fields = ("routine", "exercise")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Asignación", {"fields": ("routine", "exercise")}),
+        ("Series y carga", {"fields": ("sets", "repetitions", "weight", "rest_seconds")}),
+        ("Descripción", {"fields": ("name", "description", "muscle_group")}),
+        ("Estado", {"fields": ("status",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("routine", "exercise")
+```
+
+![](images/clipboard-3100253988.png)
+
+**Paso 5. Admin de `measurement`**
+
+Archivo `apps/measurement/admin.py`. Esta tabla no tiene `status`, así que no hay filtro de estado: uso `date_hierarchy` para recorrerla por fecha.
+
+``` python
+from django.contrib import admin
+
+from apps.measurement.models import Measurement
+
+
+@admin.register(Measurement)
+class MeasurementAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "client",
+        "trainer",
+        "weight",
+        "height",
+        "body_fat",
+        "bmi",
+        "created_at",
+    )
+    search_fields = ("client__name", "trainer__name")
+    ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+    autocomplete_fields = ("client", "trainer")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Asignación", {"fields": ("client", "trainer")}),
+        ("Medidas", {"fields": ("weight", "height", "body_fat", "bmi")}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("client", "trainer")
+```
+
+![](images/clipboard-1585880910.png)
+
+**Paso 6. Admin de `membership`**
+
+Archivo `apps/membership/admin.py`. Aquí aplico la regla de la unidad: la membresía y el pago son de solo lectura y no se agregan ni se borran. Una membresía creada en el admin no pasaría por la transacción que valida al cliente, al plan y el cruce de fechas, y un pago creado a mano tampoco. Además, cambiar el `status` desde la lista no desactivaría los pagos como lo hace `void()`. La asistencia, en cambio, es un registro simple sin reglas de transacción, así que sí se puede crear y editar desde el admin.
+
+``` python
+from django.contrib import admin
+
+from apps.membership.models import Attendance, Membership, Payment
+
+
+class PaymentInline(admin.TabularInline):
+    model = Payment
+    extra = 0
+    can_delete = False
+    show_change_link = True
+    fields = ("method", "amount", "payment_date", "status")
+    readonly_fields = ("method", "amount", "payment_date", "status")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Membership)
+class MembershipAdmin(admin.ModelAdmin):
+    list_display = ("id", "client", "plan", "start_date", "end_date", "status")
+    list_filter = ("status", "start_date", "plan")
+    search_fields = ("client__name", "client__email", "plan__name")
+    ordering = ("-start_date",)
+    date_hierarchy = "start_date"
+    readonly_fields = (
+        "client",
+        "plan",
+        "start_date",
+        "end_date",
+        "status",
+        "created_at",
+        "updated_at",
+    )
+    fieldsets = (
+        ("Información de la membresía", {"fields": ("client", "plan", "status")}),
+        ("Vigencia", {"fields": ("start_date", "end_date"), "classes": ("collapse",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+    inlines = (PaymentInline,)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("client", "plan")
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ("membership", "method", "amount", "payment_date", "status")
+    list_filter = ("status", "method", "payment_date")
+    search_fields = ("membership__client__name", "method")
+    ordering = ("-payment_date", "id")
+    readonly_fields = (
+        "membership",
+        "method",
+        "amount",
+        "payment_date",
+        "status",
+    )
+    fieldsets = (
+        ("Pago", {"fields": ("membership", "method", "amount", "payment_date")}),
+        ("Estado", {"fields": ("status",)}),
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "membership", "membership__client"
+        )
+
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ("membership", "type", "attendance_date", "created_at")
+    list_filter = ("type", "attendance_date")
+    search_fields = ("membership__client__name", "type")
+    ordering = ("-attendance_date",)
+    date_hierarchy = "attendance_date"
+    autocomplete_fields = ("membership",)
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        ("Asistencia", {"fields": ("membership", "type", "attendance_date")}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            "membership", "membership__client"
+        )
+```
+
+![](images/clipboard-2724648489.png)
+
+**Paso 7. Verificar**
+
+```         
+python manage.py check 
+python manage.py runserver
+```
+
+![](images/clipboard-3506842402.png)
+
+Con el servidor corriendo abrí [`http://127.0.0.1:8000/admin/`](http://127.0.0.1:8000/admin/), entré con el superusuario y abrí cada modelo de negocio.
+
+![](images/clipboard-1413644355.png)
+
+#### Explicación
+
+Registré los modelos con `@admin.register`, que hace lo mismo que `admin.site.register(Modelo, Clase)` pero deja el registro pegado a la clase. Cada admin define lo mismo: `list_display` (las columnas), `list_filter` (la barra lateral), `search_fields` (el cuadro de búsqueda, donde el doble guion bajo cruza una relación, como `client__name`), `ordering` y, en los formularios, `fieldsets` para agruparlos con las fechas de auditoría plegadas.
+
+`list_editable` me deja cambiar el estado desde la lista sin abrir la ficha. Django no permite que el primer campo de `list_display` sea editable, porque es el enlace a la ficha, por eso pongo primero `name` o `routine`. Para las membresías y los pagos apagué `has_add_permission` y `has_delete_permission` y puse todos los campos en `readonly_fields`: la membresía se crea con `POST /api/memberships/` y se anula con `DELETE`, que llama a `void()`. En las medidas y asistencias no hace falta ese cuidado, porque no hay una transacción detrás.
+
+El admin usa sesión y CSRF, no es la API. Sirve para mirar y, en clientes y catálogos, para corregir datos, pero no reemplaza a la API. Tampoco registré el usuario de `security`: su admin llega más adelante con la parte de autenticación.
+
+```         
+/admin/
+   │
+   ├── Client, Trainer, Plan, Exercise, Routine, RoutineExercise   lista + formulario
+   ├── Measurement                                                 lista + formulario, por fecha
+   ├── Attendance                                                  lista + formulario
+   └── Membership, Payment                                         solo lectura, sin alta ni borrado
+```
+
+#### Criterios de aceptación
+
+- **AC-13-01:** las diez tablas de negocio están registradas, con `list_display`, `list_filter` (o `date_hierarchy`) y `search_fields`.
+
+- **AC-13-02:** el formulario de cliente agrupa sus campos y no pide contraseña.
+
+- **AC-13-03:** `Membership` y `Payment` no se agregan ni se borran desde el admin, y el inline de pagos no crea filas.
+
+- **AC-13-04:** `Measurement` no ofrece filtro por estado, porque su tabla no tiene `status`.
+
+- **AC-13-05:** `python manage.py check` no reporta errores de autocompletado.
+
+#### Verificación
+
+```         
+python manage.py check
+```
+
+Y entrar a `/admin/` con el superusuario. En clientes, entrenadores, planes, ejercicios, rutinas, medidas y asistencias debe haber botón de agregar. En membresías y pagos, no.
+
+#### GATE
+
+- **AC-13-01:** las diez tablas aparecen en el admin. **PASS**
+
+- **AC-13-02:** el formulario de cliente no tiene contraseña. **PASS**.
+
+- **AC-13-03:** sin alta ni borrado en membresías y pagos. **PASS**.
+
+- **AC-13-04:** medidas sin filtro de estado. **PASS**.
+
+- **AC-13-05:** `check` sin errores. **PASS**.

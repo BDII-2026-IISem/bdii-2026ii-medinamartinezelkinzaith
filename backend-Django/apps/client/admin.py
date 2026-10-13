@@ -1,9 +1,32 @@
 from django.contrib import admin
-from .models import Client  
-# Register your models here.
+
+from apps.client.models import Client
+
+
 @admin.register(Client)
 class ClientAdmin(admin.ModelAdmin):
-    list_display = ("document_type", "document_number", "name", "phone", "email")
-    search_fields = ("document_number", "name", "email")
-    list_filter = ("status",)
-    
+    list_display = (
+        "name",
+        "document_type",
+        "document_number",
+        "email",
+        "phone",
+        "status",
+        "created_at",
+    )
+    list_filter = ("status", "document_type")
+    search_fields = ("name", "document_number", "email", "phone")
+    list_editable = ("status",)
+    ordering = ("name", "email")
+    readonly_fields = ("created_at", "updated_at")
+    fieldsets = (
+        (
+            "Información del cliente",
+            {"fields": ("document_type", "document_number", "name", "email", "phone")},
+        ),
+        ("Estado", {"fields": ("status",)}),
+        (
+            "Auditoría",
+            {"fields": ("created_at", "updated_at"), "classes": ("collapse",)},
+        ),
+    )
