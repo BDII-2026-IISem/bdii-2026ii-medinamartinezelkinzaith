@@ -4932,3 +4932,255 @@ user.delete()
 - **AC-15-02:** el hash coincide con el SHA-256 (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
 
 - **AC-15-03:** la respuesta sin `password` depende del endpoint de login. **Pendiente** hasta el ISS-17.
+
+### ISS-16 — Role, RoleUser, Resource y ResourceRole
+
+**Narrativa**
+
+Con la tabla de sesiones lista, me faltaba definir quién puede hacer qué en ActivaFit. Django ya trae grupos y permisos, pero la pregunta que necesito responder es otra: dado un método HTTP y una ruta (por ejemplo `DELETE api/memberships/<int:pk>/`), ¿el usuario tiene un rol activo que tenga ese recurso activo? Esa cadena no se expresa bien con las tablas de permisos de Django, así que modelé la mía con cuatro tablas: roles, la asignación de roles a usuarios, recursos (método más ruta) y la asignación de recursos a roles. Todas nacen `inactive`: un eslabón de la cadena no autoriza nada hasta que lo active a propósito, y así la regla de “negar por defecto” queda también en los datos y no solo en el código.
+
+**Objetivo**
+
+Modelar la matriz de autorización sin usar Groups ni Permissions de Django como regla de la API.
+
+**Requisitos**
+
+-  ISS-15 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Agregar los modelos de autorización**
+
+El archivo `apps/security/models.py` ya tiene `User` y `RefreshToken`. No lo reescribí: agregué estas cinco clases al final, debajo de `RefreshToken`. Los imports que necesitan (`models`, `settings` y `RecordStatus`) ya están desde los ISS anteriores.
+
+Las tablas se llaman `roles`, `role_users`, `resources` y `resource_roles`. Todas tienen `status` con valor por defecto `inactive`. Las parejas `(role, user)`, `(resource, role)` y `(method, route)` son únicas, y las claves foráneas usan `RESTRICT`. `Resource.route` guarda el patrón de la ruta (`api/clients/<int:pk>/`), no el path con el id ya sustituido.
+
+``` python
+class HttpMethod(models.TextChoices):
+    GET = "GET", "GET"
+    POST = "POST", "POST"
+    PUT = "PUT", "PUT"
+    PATCH = "PATCH", "PATCH"
+    DELETE = "DELETE", "DELETE"
+
+
+class Role(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(
+        max_length=8, choices=RecordStatus.choices, default=RecordStatus.INACTIVE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "roles"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="roles_status_valid",
+            )
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class RoleUser(models.Model):
+    role = models.ForeignKey(Role, on_delete=models.RESTRICT, related_name="assignments")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.RESTRICT, related_name="role_links"
+    )
+    status = models.CharField(
+        max_length=8, choices=RecordStatus.choices, default=RecordStatus.INACTIVE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "role_users"
+        constraints = [
+            models.UniqueConstraint(fields=["role", "user"], name="role_user_unique"),
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="role_users_status_valid",
+            ),
+        ]
+
+
+class Resource(models.Model):
+    name = models.CharField(max_length=150)
+    method = models.CharField(max_length=10, choices=HttpMethod.choices)
+    route = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=8, choices=RecordStatus.choices, default=RecordStatus.INACTIVE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "resources"
+        constraints = [
+            models.UniqueConstraint(fields=["method", "route"], name="resource_method_route_uniq"),
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="resources_status_valid",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.method} {self.route}"
+
+
+class ResourceRole(models.Model):
+    resource = models.ForeignKey(Resource, on_delete=models.RESTRICT, related_name="grants")
+    role = models.ForeignKey(Role, on_delete=models.RESTRICT, related_name="grants")
+    status = models.CharField(
+        max_length=8, choices=RecordStatus.choices, default=RecordStatus.INACTIVE
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "resource_roles"
+        constraints = [
+            models.UniqueConstraint(fields=["resource", "role"], name="resource_role_unique"),
+            models.CheckConstraint(
+                condition=models.Q(status__in=RecordStatus.values),
+                name="resource_roles_status_valid",
+            ),
+        ]
+```
+
+![](images/clipboard-4108806277.png)
+
+`Resource.method` es un `TextChoices` con los métodos HTTP. Y `Resource.route` guarda el patrón, no el path real: cuando más adelante cargue los recursos, el patrón lo obtendré con `resolve(path).route`.
+
+**Paso 2. Generar la migración y migrar**
+
+```         
+python manage.py makemigrations security
+python manage.py migrate
+```
+
+Debe crear la siguiente migración de `security` (probablemente la `0003`) con las cuatro tablas nuevas.
+
+![](images/clipboard-2724637828.png)
+
+**Paso 3. Verificar el sistema**
+
+```         
+python manage.py check
+```
+
+![](images/clipboard-2100491443.png)
+
+#### Explicación
+
+Django ya tiene grupos y permisos, pero la pregunta de ActivaFit es distinta: dado un método y un patrón de ruta, ¿está activa toda la cadena de usuario a rol y de rol a recurso? Esa cadena no se expresa con `auth_permission`, por eso modelé la mía.
+
+```         
+User → RoleUser → Role → ResourceRole → Resource(method, route)
+```
+
+Un eslabón que nace `inactive` no autoriza. Hay que activarlo a propósito, y esa es la forma de negar por defecto también en los datos. Las restricciones únicas evitan filas repetidas: un usuario no puede tener dos veces el mismo rol, ni un rol el mismo recurso, ni existir dos recursos con el mismo método y la misma ruta. Y como las claves foráneas usan `RESTRICT`, no puedo borrar un rol que tenga usuarios o recursos asignados.
+
+#### Criterios de aceptación
+
+-  **AC-16-01:** las cuatro tablas existen.
+
+-  **AC-16-02:** no se puede repetir la pareja rol-usuario ni la pareja recurso-rol.
+
+-  **AC-16-03:** la ruta de un recurso se guarda como patrón (`api/clients/<int:pk>/`), no como el ejemplo con el id sustituido.
+
+#### Verificación
+
+La guía comprueba estos criterios con el comando `seed_rbac`, que se construye mucho más adelante (ISS-24). Por ahora los verifico en la consola de Django:
+
+```         
+python manage.py showmigrations security 
+python manage.py shell
+```
+
+`showmigrations` debe mostrar todas las migraciones de `security` con una `[X]`. Dentro del shell:
+
+```         
+from django.db import IntegrityError, transaction
+from django.db.models import RestrictedError
+from django.urls import resolve
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+
+user = User.objects.create_user(username="prueba_rbac", email="rbac@activafit.com", password="Prueba123*")
+role = Role.objects.create(name="Recepcionista")
+resource = Resource.objects.create(name="Listar clientes", method="GET", route="api/clients/")
+RoleUser.objects.create(role=role, user=user)
+ResourceRole.objects.create(resource=resource, role=role)
+role.status
+resolve("/api/clients/1/").route
+resolve("/api/memberships/1/").route
+```
+
+-  `role.status` debe dar `'inactive'`.
+
+-  Las dos llamadas a `resolve` deben dar `'api/clients/<int:pk>/'` y `'api/memberships/<int:pk>/'`: ese es el patrón que guardaré en `Resource.route`.
+
+![](images/clipboard-1619432037.png)
+
+Ahora las parejas repetidas deben rechazarse (pulsa Enter dos veces tras cada bloque):
+
+```         
+try:
+    with transaction.atomic():
+        RoleUser.objects.create(role=role, user=user)
+except IntegrityError as e:
+    print("Rechazado:", e)
+```
+
+```         
+try:
+    with transaction.atomic():
+        ResourceRole.objects.create(resource=resource, role=role)
+except IntegrityError as e:
+    print("Rechazado:", e)
+```
+
+```         
+try:
+    with transaction.atomic():
+        Resource.objects.create(name="Otro", method="GET", route="api/clients/")
+except IntegrityError as e:
+    print("Rechazado:", e)
+```
+
+![](images/clipboard-2822569479.png)
+
+Y el borrado restringido:
+
+```         
+try:
+    role.delete()
+except RestrictedError as e:
+    print("Restringido:", e)
+```
+
+Para limpiar, en este orden por las claves foráneas:
+
+```         
+ResourceRole.objects.all().delete()
+RoleUser.objects.all().delete()
+Resource.objects.all().delete()
+Role.objects.all().delete()
+user.delete()
+```
+
+![](images/clipboard-209801750.png)
+
+#### GATE
+
+- **AC-16-01:** la migración está aplicada y las cuatro tablas existen. **PASS**.
+
+-  **AC-16-02:** `IntegrityError` al repetir las parejas. **PASS**.
+
+-  **AC-16-03:** `resolve(...).route` devuelve el patrón con `<int:pk>`. **PASS parcial**, se completa cuando construya el comando que carga los recursos (ISS-24).
