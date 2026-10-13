@@ -4442,3 +4442,241 @@ Y entrar a `/admin/` con el superusuario. En clientes, entrenadores, planes, eje
 - **AC-13-04:** medidas sin filtro de estado. **PASS**.
 
 - **AC-13-05:** `check` sin errores. **PASS**.
+
+### ISS-14 — OpenAPI
+
+**Narrativa**
+
+Con la API de ActivaFit funcionando, necesitaba un contrato que cualquiera pudiera consultar sin leer mi código. En lugar de escribir un archivo YAML a mano, que se desactualiza en cuanto cambio una vista, usé `drf-spectacular`, que lee mis vistas y mis serializers y genera el esquema OpenAPI por sí solo. Con ese esquema también quedó disponible Swagger UI, una página donde puedo probar cada endpoint desde el navegador. Como todavía no tengo autenticación, todo sigue en acceso abierto, y el único ajuste que tuve que hacer a mano fue describir con `extend_schema` las vistas que construyen su serializer por dentro, porque spectacular no puede adivinar su forma.
+
+**Objetivo**
+
+Publicar el contrato de la API en un esquema que se genere desde las vistas, no desde un YAML escrito a mano.
+
+**Requisitos**
+
+-  ISS-13 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  `drf-spectacular` 0.30.
+
+#### Construcción
+
+**Paso 0. Activar el entorno e instalar `drf-spectacular`**
+
+Fijé la versión: sin pin, `pip` puede subir a una serie que ya no cubre mi versión de DRF.
+
+```         
+source .venv/bin/activate 
+python -m pip install "drf-spectacular==0.30.0" 
+python -m pip freeze > requirements.txt
+```
+
+![](images/clipboard-606298142.png)
+
+El paquete se llama `drf-spectacular` en pip y `drf_spectacular` en Python. En los settings y en las rutas uso el nombre con guion bajo.
+
+**Paso 1. Parchear `config/settings/__init__.py`**
+
+El archivo ya existe y todavía no tiene JWT en `REST_FRAMEWORK`: eso llega más adelante. Aquí solo registro el esquema.
+
+Debajo de `"rest_framework",` en `INSTALLED_APPS` agregué:
+
+``` python
+    "drf_spectacular",
+```
+
+Dentro de `REST_FRAMEWORK`, debajo de la lista `DEFAULT_PARSER_CLASSES`, agregué:
+
+``` python
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+```
+
+Y al final del archivo agregué:
+
+``` python
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ActivaFit API",
+    "DESCRIPTION": "API REST de ActivaFit, sistema de gestión de gimnasio.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "CAMELIZE_NAMES": True,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields",
+    ],
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
+}
+```
+
+![](images/clipboard-1306214411.png)
+
+`SERVE_PERMISSIONS` deja el esquema en acceso abierto. El hook `camelize_serializer_fields` alinea el esquema con el JSON camelCase (`createdAt`). `SERVE_INCLUDE_SCHEMA` en falso evita duplicar el esquema dentro de Swagger.
+
+**Paso 2. Agregar las rutas del esquema**
+
+El esquema no pertenece a una app de negocio, así que sus rutas van en el URLconf raíz, `config/urls.py`, y no en el `urls.py` de cada app.
+
+Debajo de la línea `from django.urls import include, path` agregué:
+
+``` python
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularRedocView,
+    SpectacularSwaggerView,
+)
+```
+
+Y debajo de `path("admin/", admin.site.urls),`, antes de los `include("apps....")`, agregué:
+
+``` python
+    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/schema/swagger-ui/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
+    path(
+        "api/schema/redoc/",
+        SpectacularRedocView.as_view(url_name="schema"),
+        name="redoc",
+    ),
+```
+
+![](images/clipboard-203147138.png)
+
+Quedan delante de los `include` de las apps. Son rutas literales y no chocan con `clients` ni `plans`, pero vivir en el proyecto deja claro que documentan la API completa y no un recurso en particular.
+
+**Paso 3. Describir las vistas que construyen su serializer por dentro**
+
+Spectacular lee serializers, querysets y `extend_schema`. Las vistas de registro de membresías construyen su serializer por dentro (`MembershipRegisterSerializer`), así que no se adivinan: hay que declararlas. Sin eso, `--validate` reportaba errores de serializer.
+
+En `apps/membership/views.py` agregué este import debajo de los demás:
+
+```         
+from drf_spectacular.utils import extend_schema
+```
+
+Y decoré los métodos de las dos vistas de registro, reemplazando esas dos clases por estas versiones:
+
+``` python
+class MembershipRegisterAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=MembershipRegisterSerializer,
+        responses={201: MembershipSerializer},
+    )
+    def post(self, request):
+        serializer = MembershipRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        membership = serializer.save()
+        membership = Membership.objects.select_related("client", "plan").prefetch_related(
+            "payments"
+        ).get(pk=membership.pk)
+        return Response(MembershipSerializer(membership).data, status=status.HTTP_201_CREATED)
+
+
+class MembershipCollectionAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(responses=MembershipSerializer(many=True))
+    def get(self, request, *args, **kwargs):
+        memberships = MembershipReadViewSet.queryset.all()
+        return Response(MembershipSerializer(memberships, many=True).data)
+
+    @extend_schema(
+        request=MembershipRegisterSerializer,
+        responses={201: MembershipSerializer},
+    )
+    def post(self, request, *args, **kwargs):
+        handler = MembershipRegisterAPIView()
+        handler.request = request
+        handler.format_kwarg = None
+        handler.args = ()
+        handler.kwargs = {}
+        return handler.post(request)
+```
+
+![](images/clipboard-1826402087.png)
+
+**Paso 4. Generar y validar el esquema**
+
+```         
+python manage.py spectacular --file /tmp/activafit-schema.yml --validate
+```
+
+![](images/clipboard-3509973758.png)
+
+Si termina sin errores, el esquema es válido. Puede mostrar algunos avisos (`Warning`) sobre tipos que no pudo deducir; los errores son lo que importa, y se revisan con el código de salida (`echo $?` debe mostrar `0`).
+
+#### Explicación
+
+Spectacular recorre mis vistas, lee sus serializers y sus querysets, y escribe OpenAPI. Los `ModelViewSet` y los `ListAPIView` se describen solos, porque tienen `serializer_class` y `queryset`. Una `APIView` que construye el serializer por dentro no se adivina: por eso las dos vistas de registro de membresías llevan `extend_schema`. Más adelante, el login, el refresh y el logout necesitarán lo mismo.
+
+El esquema no hereda el permiso global del proyecto: `SERVE_PERMISSIONS` lo deja abierto aparte. Cuando agregue autenticación, esta documentación seguirá abierta, y solo los endpoints de negocio exigirán token.
+
+```         
+GET /api/schema/              el esquema OpenAPI
+GET /api/schema/swagger-ui/   Swagger UI, para probar cada endpoint
+GET /api/schema/redoc/        la misma documentación en formato Redoc
+```
+
+#### Cómo probarlo
+
+Para ver el resultado hace falta el servidor. Los comportamientos de negocio (transacción, rollback, baja lógica) siguen afirmados por las pruebas automáticas de los ISS anteriores. Swagger sirve para recorrer la API a mano, sobre la misma capa abierta.
+
+```         
+python manage.py runserver
+```
+
+Abrí [`http://127.0.0.1:8000/api/schema/swagger-ui/`](http://127.0.0.1:8000/api/schema/swagger-ui/). No hay botón Authorize que pulsar: todavía no hay token. Ahí deben aparecer todos los recursos:
+
+```         
+swagger-ui                        sin token
+      │
+      ├── /api/clients/            POST, GET, GET/{id}, PATCH, DELETE
+      ├── /api/trainers/           el mismo CRUD
+      ├── /api/plans/              el mismo CRUD
+      ├── /api/exercises/          el mismo CRUD
+      ├── /api/routines/           el mismo CRUD
+      ├── /api/routine-exercises/  el mismo CRUD
+      ├── /api/measurements/       el mismo CRUD (DELETE real)
+      ├── /api/attendances/        el mismo CRUD (DELETE real)
+      ├── GET /api/memberships/active/
+      └── /api/memberships/        POST y GET
+          GET y DELETE /api/memberships/{id}/
+                  │
+                  └── payments     sin ruta propia, viajan dentro de la membresía
+```
+
+![](images/clipboard-1019123325.png)
+
+![](images/clipboard-257307886.png)
+
+![](images/clipboard-2522262333.png)
+
+![](images/clipboard-322188096.png)
+
+#### Criterios de aceptación
+
+- **AC-14-01:** `spectacular --validate` termina sin errores.
+
+- **AC-14-02:** Swagger y el esquema son accesibles sin Bearer.
+
+- **AC-14-03:** el esquema describe el cuerpo en camelCase.
+
+#### Verificación
+
+`python manage.py spectacular --validate` salió con código 0 después de agregar los `extend_schema`. Además, abrí Swagger y comprobé que aparecían todos los recursos de la lista de arriba.
+
+#### GATE
+
+-  **AC-14-01:** `--validate` sin errores. **PASS**.
+
+-  **AC-14-02:** `SERVE_PERMISSIONS` en `AllowAny`. **PASS**.
+
+-  **AC-14-03:** el hook camelCase está en `SPECTACULAR_SETTINGS`. **PASS**.

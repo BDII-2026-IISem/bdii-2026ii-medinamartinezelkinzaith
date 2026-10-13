@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "apps.routine.apps.RoutineConfig",
     "apps.membership.apps.MembershipConfig",
     "rest_framework",
+    "drf_spectacular",
     "corsheaders",
     "apps.security.apps.SecurityConfig",
 ]
@@ -115,5 +116,20 @@ REST_FRAMEWORK = {
         "djangorestframework_camel_case.parser.CamelCaseFormParser",
         "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
     ],
-    "DEFAULT_PAGINATION_CLASS": None,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_PAGINATION_CLASS": None,   
+}
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ActivaFit API",
+    "DESCRIPTION": "API REST de ActivaFit, sistema de gestión de gimnasio.",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "CAMELIZE_NAMES": True,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "drf_spectacular.contrib.djangorestframework_camel_case.camelize_serializer_fields",
+    ],
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
+    "SWAGGER_UI_SETTINGS": {"persistAuthorization": True},
 }

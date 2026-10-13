@@ -4,6 +4,7 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema
 
 from apps.common.status import RecordStatus
 from apps.membership.models import Attendance, Membership
@@ -50,6 +51,10 @@ class MembershipReadViewSet(
 class MembershipRegisterAPIView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=MembershipRegisterSerializer,
+        responses={201: MembershipSerializer},
+    )
     def post(self, request):
         serializer = MembershipRegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -63,10 +68,15 @@ class MembershipRegisterAPIView(APIView):
 class MembershipCollectionAPIView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(responses=MembershipSerializer(many=True))
     def get(self, request, *args, **kwargs):
         memberships = MembershipReadViewSet.queryset.all()
         return Response(MembershipSerializer(memberships, many=True).data)
 
+    @extend_schema(
+        request=MembershipRegisterSerializer,
+        responses={201: MembershipSerializer},
+    )
     def post(self, request, *args, **kwargs):
         handler = MembershipRegisterAPIView()
         handler.request = request
