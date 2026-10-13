@@ -5835,3 +5835,227 @@ tambien debe responder:
 -  **AC-18-04:** vencido sin revocar la familia. **PASS**.
 
 -  **AC-18-05:** usuario inactivo. **PASS**.
+
+### ISS-19 — Logout
+
+**Narrativa**
+
+Con el login y el refresh listos, me faltaba la salida: cerrar la sesión. En ActivaFit una sesión vive en el refresh token, porque el access token es un JWT que no se guarda en ninguna tabla y se vence solo. Por eso el logout recibe el refresh y lo invalida: lo marco como inactivo y anoto cuándo fue revocado, y desde ese momento ya no sirve para pedir un access nuevo. Hay una excepción: si me presentan un refresh que ya había sido reemplazado en una rotación, no lo trato como un cierre normal, porque ese token ya no debería existir. Lo trato como reuso y apago toda su familia, igual que en el ISS-18.
+
+**Objetivo**
+
+Invalidar el refresh que se presenta, sin guardar el access token.
+
+**Requisitos**
+
+- ISS-18 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Agregar la vista de logout**
+
+En `apps/security/auth_views.py` reemplacé la importación de serializers por esta, que ahora incluye `LogoutSerializer`:
+
+``` python
+from apps.security.serializers import (
+    LoginSerializer,
+    LogoutSerializer,
+    RefreshSerializer,
+    TokenPairSerializer,
+)
+```
+
+Y agregué la clase nueva debajo de `_revoke_family` y encima de `def _find_user`. Es abierta, como el login y el refresh, porque la credencial de la sesión es el refresh y no el access. Si el hash no existe, responde 401. Si el token ya fue reemplazado, revoca la familia y responde 401. En cualquier otro caso lo deja inactivo, escribe `revoked_at` y responde 204.
+
+``` python
+class LogoutAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=LogoutSerializer,
+        responses={204: None},
+        auth=[],
+    )
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token_hash = hash_token(serializer.validated_data["refresh"])
+        invalid = Response(
+            {"detail": "Refresh inválido."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+        now = timezone.now()
+
+        with transaction.atomic():
+            stored = RefreshToken.objects.select_for_update().filter(token_hash=token_hash).first()
+            if stored is None:
+                return invalid
+
+            if stored.replaced_by_id is not None:
+                _revoke_family(stored.family_id, now)
+                return invalid
+
+            stored.status = RecordStatus.INACTIVE
+            stored.revoked_at = now
+            stored.save(update_fields=["status", "revoked_at", "updated_at"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+```
+
+![](images/clipboard-621314583.png)
+
+Las tres decisiones quedan así:
+
+```         
+hash desconocido          → 401
+token ya reemplazado      → revoca la familia → 401
+en cualquier otro caso    → status inactive, revoked_at = ahora → 204
+```
+
+Un segundo logout del mismo token, si no fue rotado, vuelve a dejarlo inactivo y responde 204 otra vez.
+
+**Paso 2. Agregar la ruta**
+
+En `apps/security/urls.py` cambié el import de las vistas:
+
+``` python
+from apps.security.auth_views import LoginAPIView, LogoutAPIView, RefreshAPIView
+```
+
+Y debajo de la ruta del refresh agregué:
+
+``` python
+    path("auth/logout/", LogoutAPIView.as_view(), name="auth-logout"),
+```
+
+![](images/clipboard-1262670555.png)
+
+**Paso 3. Agregar las pruebas**
+
+Siguen siendo abiertas y entran en la clase `AuthFlowTests`. Agregué estos dos métodos al final de la clase. El primero es el de la guía, con una línea extra que comprueba que un segundo logout también responde 204. El segundo es mío: cubre los dos casos de rechazo (un token desconocido y uno ya rotado).
+
+``` python
+    def test_logout_invalidates_refresh(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        raw = login.data["refresh"]
+        logout = self.client.post("/api/auth/logout/", {"refresh": raw}, format="json")
+        self.assertEqual(logout.status_code, status.HTTP_204_NO_CONTENT)
+        again = self.client.post("/api/auth/refresh/", {"refresh": raw}, format="json")
+        self.assertEqual(again.status_code, status.HTTP_401_UNAUTHORIZED)
+        second_logout = self.client.post("/api/auth/logout/", {"refresh": raw}, format="json")
+        self.assertEqual(second_logout.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_logout_unknown_or_rotated_token_is_401(self):
+        unknown = self.client.post(
+            "/api/auth/logout/", {"refresh": "no-existe"}, format="json"
+        )
+        self.assertEqual(unknown.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        first = login.data["refresh"]
+        rotated = self.client.post("/api/auth/refresh/", {"refresh": first}, format="json")
+        second = rotated.data["refresh"]
+        reused_logout = self.client.post("/api/auth/logout/", {"refresh": first}, format="json")
+        self.assertEqual(reused_logout.status_code, status.HTTP_401_UNAUTHORIZED)
+        after = self.client.post("/api/auth/refresh/", {"refresh": second}, format="json")
+        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)
+```
+
+![](images/clipboard-57732393.png)
+
+**Paso 4. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+```
+
+![](images/clipboard-367036647.png)
+
+Debe terminar con `Ran 6 tests` y `OK`: los dos del login, los dos del refresh y los dos del logout. Si corres `python manage.py test apps.security`, deben salir 12 pruebas, con las 6 de selección del motor.
+
+#### Explicación
+
+El logout no pide access token. La credencial de la sesión guardada es el refresh, y el access es un JWT que se vence solo y no está en ninguna tabla, así que no hay nada que limpiar del lado del access. Cerrar sesión en un dispositivo tampoco cierra las de otros dispositivos: cada login crea su propia familia de tokens, y el logout apaga solo el token que presento.
+
+Si el valor que me llega ya fue rotado, no lo trato como un logout normal. Un token reemplazado ya no debería existir, así que alguien lo está presentando por segunda vez, y como en el refresh, apago toda su familia. Las respuestas de rechazo usan el mismo 401 genérico, sin decir si el token no existía o si estaba reemplazado.
+
+#### Cómo probarlo
+
+El comando es uno solo, y ese `OK` final es la comprobación:
+
+```         
+python manage.py test apps.security.tests.AuthFlowTests
+```
+
+Lo que hace la prueba, con la analogía de la llave de un solo uso:
+
+```         
+login → recibo la llave R
+        │
+        ▼
+POST /api/auth/logout/    {refresh: R}    204   cierro la sesión (la llave queda anulada)
+        │
+        ▼
+POST /api/auth/refresh/   {refresh: R}    401   intento usarla otra vez y el servidor la rechaza
+```
+
+Si prefieres verlo con tus propios ojos, usa dos terminales con el entorno activo. En la terminal 1 deja el servidor corriendo (`python manage.py runserver`). En la terminal 2, haz login con tu usuario y copia el valor de `refresh` de la respuesta:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/login/ -H "Content-Type: application/json" -d '{"username":"TU_USUARIO","password":"TU_CLAVE"}'
+```
+
+![](images/clipboard-2971856982.png)
+
+Después cierra la sesión con ese refresh (pega el tuyo en lugar de `PEGA_AQUI_R`). El `-i` hace que `curl` muestre el código de estado, porque un 204 no trae cuerpo y sin eso no verías nada:
+
+```         
+curl -i -X POST http://127.0.0.1:8000/api/auth/logout/ -H "Content-Type: application/json" -d '{"refresh":"PEGA_AQUI_R"}'
+```
+
+![](images/clipboard-3501689037.png)
+
+Debe mostrar `HTTP/1.1 204 No Content`. Y ahora intenta renovar con el mismo refresh:
+
+```         
+curl -i -X POST http://127.0.0.1:8000/api/auth/refresh/ -H "Content-Type: application/json" -d '{"refresh":"PEGA_AQUI_R"}'
+```
+
+![](images/clipboard-4201222836.png)
+
+Debe mostrar `HTTP/1.1 401 Unauthorized` con `Refresh inválido.` Si te da 200, el logout no está anulando el token. En Swagger (`/api/schema/swagger-ui/`) puedes repetir lo mismo sin autorizar nada: login, logout con el refresh y refresh con el mismo valor. Con `curl` o con Swagger las filas quedan en tu base de datos real.
+
+#### Criterios de aceptación
+
+-  **AC-19-01:** el logout responde 204.
+
+-  **AC-19-02:** ese refresh ya no puede renovar: el refresh siguiente responde 401.
+
+-  **AC-19-03:** un segundo logout del mismo token, si no fue rotado, también responde 204.
+
+-  **AC-19-04:** un token desconocido o ya rotado responde 401, y el rotado apaga la familia.
+
+#### Verificación
+
+`test_logout_invalidates_refresh` y `test_logout_unknown_or_rotated_token_is_401`, con el comando del Paso 4.
+
+#### GATE
+
+-  **AC-19-01:** HTTP 204. **PASS**.
+
+-  **AC-19-02:** el refresh posterior responde 401. **PASS**.
+
+-  **AC-19-03:** el segundo logout responde 204. **PASS**.
+
+-  **AC-19-04:** desconocido o rotado responde 401, y la familia queda revocada. **PASS**.

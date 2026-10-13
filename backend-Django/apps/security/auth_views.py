@@ -13,7 +13,12 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.common.status import RecordStatus
 from apps.security.models import RefreshToken
-from apps.security.serializers import LoginSerializer, RefreshSerializer, TokenPairSerializer
+from apps.security.serializers import (
+    LoginSerializer,
+    LogoutSerializer,
+    RefreshSerializer,
+    TokenPairSerializer,
+)
 from apps.security.tokens import generate_refresh_value, hash_token
 
 User = get_user_model()
@@ -133,3 +138,37 @@ def _revoke_family(family_id, now):
         status=RecordStatus.INACTIVE,
         updated_at=now,
     )
+
+class LogoutAPIView(APIView):
+    authentication_classes = []
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=LogoutSerializer,
+        responses={204: None},
+        auth=[],
+    )
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        token_hash = hash_token(serializer.validated_data["refresh"])
+        invalid = Response(
+            {"detail": "Refresh inválido."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+        now = timezone.now()
+
+        with transaction.atomic():
+            stored = RefreshToken.objects.select_for_update().filter(token_hash=token_hash).first()
+            if stored is None:
+                return invalid
+
+            if stored.replaced_by_id is not None:
+                _revoke_family(stored.family_id, now)
+                return invalid
+
+            stored.status = RecordStatus.INACTIVE
+            stored.revoked_at = now
+            stored.save(update_fields=["status", "revoked_at", "updated_at"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)

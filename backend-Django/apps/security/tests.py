@@ -153,3 +153,36 @@ class AuthFlowTests(APITestCase):
             "/api/auth/refresh/", {"refresh": second_login.data["refresh"]}, format="json"
         )
         self.assertEqual(inactive.status_code, status.HTTP_401_UNAUTHORIZED)
+    def test_logout_invalidates_refresh(self):
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        raw = login.data["refresh"]
+        logout = self.client.post("/api/auth/logout/", {"refresh": raw}, format="json")
+        self.assertEqual(logout.status_code, status.HTTP_204_NO_CONTENT)
+        again = self.client.post("/api/auth/refresh/", {"refresh": raw}, format="json")
+        self.assertEqual(again.status_code, status.HTTP_401_UNAUTHORIZED)
+        second_logout = self.client.post("/api/auth/logout/", {"refresh": raw}, format="json")
+        self.assertEqual(second_logout.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_logout_unknown_or_rotated_token_is_401(self):
+        unknown = self.client.post(
+            "/api/auth/logout/", {"refresh": "no-existe"}, format="json"
+        )
+        self.assertEqual(unknown.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        first = login.data["refresh"]
+        rotated = self.client.post("/api/auth/refresh/", {"refresh": first}, format="json")
+        second = rotated.data["refresh"]
+        reused_logout = self.client.post("/api/auth/logout/", {"refresh": first}, format="json")
+        self.assertEqual(reused_logout.status_code, status.HTTP_401_UNAUTHORIZED)
+        after = self.client.post("/api/auth/refresh/", {"refresh": second}, format="json")
+        self.assertEqual(after.status_code, status.HTTP_401_UNAUTHORIZED)    
+
