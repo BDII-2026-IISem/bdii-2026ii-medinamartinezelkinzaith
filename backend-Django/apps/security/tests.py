@@ -13,7 +13,7 @@ from io import StringIO
 from django.core.management import call_command
 
 from apps.common.status import RecordStatus
-from apps.common.testing import PASSWORD, create_active_user, grant_crud
+from apps.common.testing import PASSWORD, create_active_user, grant, grant_crud
 from apps.security.authentication import ActivaFitJWTAuthentication 
 from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser, User
 from apps.security.permissions import HasResourceAccess
@@ -486,4 +486,55 @@ class SeedRbacTests(APITestCase):
         self.client.force_authenticate(user=user)
         self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
         self.assertEqual(self.client.get("/api/plans/").status_code, status.HTTP_200_OK)
-        
+
+class RbacTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        self.client.force_authenticate(user=self.user)
+
+    def test_missing_grant_is_403_and_missing_identity_is_401(self):
+        denied = self.client.get("/api/clients/")
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=None)
+        anonymous = self.client.get("/api/clients/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_any_inactive_link_denies(self):
+        role = grant(self.user, "GET", "/api/clients/")
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+        links = [
+            role,
+            RoleUser.objects.get(role=role, user=self.user),
+            ResourceRole.objects.get(role=role),
+            Resource.objects.get(method="GET", route="api/clients/"),
+        ]
+        for link in links:
+            with self.subTest(link=link.__class__.__name__):
+                link.status = RecordStatus.INACTIVE
+                link.save(update_fields=["status", "updated_at"])
+                denied = self.client.get("/api/clients/")
+                self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+                link.status = RecordStatus.ACTIVE
+                link.save(update_fields=["status", "updated_at"])
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+
+    def test_invalid_jwt_and_inactive_user_with_valid_jwt_are_401(self):
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer token-invalido")
+        invalid = self.client.get("/api/clients/")
+        self.assertEqual(invalid.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        valid_without_grant = self.client.get("/api/clients/")
+        self.assertEqual(valid_without_grant.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        inactive = self.client.get("/api/clients/")

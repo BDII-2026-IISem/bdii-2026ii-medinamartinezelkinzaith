@@ -7736,3 +7736,239 @@ El usuario `visita` y todo lo que crees desde Swagger queda en tu base de datos 
 -  **AC-24-03:** `--validate` con código 0 y `bearerAuth` en el esquema. **PASS**.
 
 -  **AC-24-04:** el administrador sembrado recibe 200 y `visita` recibe 403. **PAS**
+
+### ISS-25 — Pruebas 401 y 403
+
+**Narrativa**
+
+La última unidad no agrega funcionalidad: deja por escrito, en pruebas, la diferencia entre dos respuestas que se confunden con facilidad. Un 401 significa que la petición no demostró quién es, ya sea porque no trae token, porque el token es inválido o porque el usuario que nombra ya no está activo. Un 403 significa que el sistema sabe perfectamente quién eres y aun así no tienes concedida esa operación. No bastaba con verlo una vez en Swagger: quería pruebas que fallen si alguien rompe esa distinción. Además, esta unidad cierra la Fase II, con los tres niveles de acceso funcionando sobre toda la API de ActivaFit.
+
+**Objetivo**
+
+Escribir en tests la diferencia entre no tener identidad (401) y no tener permiso (403).
+
+**Requisitos**
+
+-  ISS-24 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Ajustar un import**
+
+Para usar `grant` necesito importarlo. En `apps/security/tests.py` reemplacé esta línea:
+
+```         
+from apps.common.testing import PASSWORD, create_active_user, grant_crud
+```
+
+por esta:
+
+```         
+from apps.common.testing import PASSWORD, create_active_user, grant, grant_crud
+```
+
+**Paso 2. Agregar `RbacTests`**
+
+Al final del archivo, sin tocar las demás clases, agregué esta. Los dos primeros métodos son los de la guía. El tercero lo agregué yo, con un JWT real en lugar de `force_authenticate`, para comprobar la frase central de la unidad: un usuario inactivo con un token bien firmado recibe 401, no 403.
+
+``` python
+class RbacTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        self.client.force_authenticate(user=self.user)
+
+    def test_missing_grant_is_403_and_missing_identity_is_401(self):
+        denied = self.client.get("/api/clients/")
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=None)
+        anonymous = self.client.get("/api/clients/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_any_inactive_link_denies(self):
+        role = grant(self.user, "GET", "/api/clients/")
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+        links = [
+            role,
+            RoleUser.objects.get(role=role, user=self.user),
+            ResourceRole.objects.get(role=role),
+            Resource.objects.get(method="GET", route="api/clients/"),
+        ]
+        for link in links:
+            with self.subTest(link=link.__class__.__name__):
+                link.status = RecordStatus.INACTIVE
+                link.save(update_fields=["status", "updated_at"])
+                denied = self.client.get("/api/clients/")
+                self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+                link.status = RecordStatus.ACTIVE
+                link.save(update_fields=["status", "updated_at"])
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+
+    def test_invalid_jwt_and_inactive_user_with_valid_jwt_are_401(self):
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "ana", "password": PASSWORD},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer token-invalido")
+        invalid = self.client.get("/api/clients/")
+        self.assertEqual(invalid.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {login.data['access']}")
+        valid_without_grant = self.client.get("/api/clients/")
+        self.assertEqual(valid_without_grant.status_code, status.HTTP_403_FORBIDDEN)
+
+        self.user.status = RecordStatus.INACTIVE
+        self.user.save()
+        inactive = self.client.get("/api/clients/")
+        self.assertEqual(inactive.status_code, status.HTTP_401_UNAUTHORIZED)
+```
+
+![](images/clipboard-258960516.png)
+
+**Paso 3. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.RbacTests 
+python manage.py test apps
+```
+
+![](images/clipboard-3646648320.png)
+
+La primera debe terminar con `Ran 3 tests` y `OK`. La segunda corre todo el proyecto, con las pruebas de todos los ISS, y debe dar `Ran 49 tests` y `OK`: 23 del negocio y 26 de seguridad.
+
+#### Explicación
+
+401 y 403 no se intercambian para que “se vea un error”. El 401 significa que la petición no demostró una identidad vigente. El 403 significa que la identidad sí está vigente y la operación no está concedida. Por eso el mismo `GET /api/clients/` responde 401 sin token, 401 con un token inválido, 403 con un token válido pero sin concesión, y 200 con la cadena completa activa.
+
+Un usuario inactivo con un JWT bien firmado recibe 401, no 403: la firma del token es válida, pero la identidad que nombra ya no está vigente, y mi clase de autenticación lo detecta antes de llegar a los permisos. El 403 solo aparece en el tercer nivel de acceso, JWT con token más permisos por rol, y nunca cuando falta el token. La cadena tiene cuatro eslabones (rol, asignación del rol, concesión y recurso), y el segundo test comprueba que basta con apagar uno solo para volver a 403.
+
+```         
+GET /api/clients/
+      │
+      ├── sin token, o token inválido           401
+      ├── usuario inactivo con JWT válido       401
+      ├── JWT válido, sin concesión             403
+      ├── cadena completa activa                200
+      └── un eslabón inactivo                   403
+          rol · asignación · concesión · recurso
+```
+
+#### Cómo probarlo
+
+El comando es uno solo, y el `OK` final es la comprobación:
+
+```         
+python manage.py test apps.security.tests.RbacTests
+```
+
+Lo que hacen las pruebas, todas sobre `GET /api/clients/`:
+
+```         
+test 1   usuario sin concesión          403
+         el mismo usuario sin identidad 401
+
+test 2   concedo la ruta                200
+         apago el rol                   403   y lo vuelvo a activar
+         apago la asignación            403   y lo vuelvo a activar
+         apago la concesión             403   y lo vuelvo a activar
+         apago el recurso               403   y lo vuelvo a activar
+         al final todo activo           200
+
+test 3   token inválido                 401
+         login real, JWT válido         403   (sin concesión)
+         desactivo al usuario           401   (el mismo token)
+```
+
+Para verlo a mano en Swagger, después de la semilla del ISS-24, abre `GET /api/clients/`: sin Authorize responde 401, con el token de un usuario sin rol responde 403, y con el token de tu administrador responde 200. El test es el que apaga cada eslabón, algo que en Swagger sería largo de hacer a mano.
+
+#### Criterios de aceptación
+
+-  **AC-25-01:** la suite completa pasa.
+
+-  **AC-25-02:** existe una prueba cuyo resultado esperado es 401.
+
+- **AC-25-03:** existe una prueba cuyo resultado esperado es 403.
+
+-  **AC-25-04:** el 403 no aparece cuando falta el token.
+
+#### Verificación
+
+`python manage.py test apps`, con el resultado de `RbacTests` incluido.
+
+#### GATE
+
+-  **AC-25-01:** la suite `apps` pasa. **PASS**.
+
+-  **AC-25-02:** el test del anónimo y del token inválido esperan 401. **PASS**.
+
+-  **AC-25-03:** el test sin concesión y el de los eslabones inactivos esperan 403. **PASS**.
+
+-  **AC-25-04:** el anónimo recibe 401 y no 403. **PASS**.
+
+### Cierre de la Fase II — Auth con RBAC
+
+Esta fase agregó identidad y autorización sobre el negocio que ya estaba cerrado en el ISS-14. Quedaron definidos tres accesos, y cada endpoint de ActivaFit usa uno solo.
+
+| Acceso | Endpoints |
+|----|----|
+| OPEN | `POST /api/auth/login/`, `/api/auth/refresh/`, `/api/auth/logout/`, el esquema y Swagger |
+| JWT con token | `GET` y `PATCH /api/auth/profile/` |
+| JWT con token + RBAC | clientes, entrenadores, planes, ejercicios, rutinas, medidas, asistencias, membresías, y el CRUD de usuarios, roles, recursos y asignaciones |
+
+#### Qué queda construido
+
+Un usuario propio con contraseña hasheada por Django. Un access token que no se guarda. Un refresh que se guarda solo como hash, con familia, rotación y revocación por reuso. Logout del refresh. Un perfil que solo exige JWT y no consulta la matriz. La matriz de usuarios, roles, recursos y concesiones. El permiso `HasResourceAccess` sobre todo el negocio, con negación por defecto. Un 401 cuando no hay identidad vigente y un 403 cuando hay identidad pero no concesión. Una semilla que toma las rutas de `resolve().route`. Y Swagger con Bearer.
+
+#### Verificación
+
+```         
+python manage.py check 
+python manage.py test apps 
+python manage.py spectacular --validate 
+python manage.py seed_rbac --username admin
+```
+
+![\
+![](images/clipboard-455585676.png)](images/clipboard-1254744896.png)
+
+| Pieza | Resultado |
+|----|----|
+| Login por `username` y por correo | PASS |
+| Usuario inactivo y clave incorrecta, 401 | PASS |
+| Rotación y reuso de familia | PASS |
+| Logout 204 y refresh posterior 401 | PASS |
+| Perfil con JWT, y access inválido tras desactivar al usuario | PASS |
+| 401 frente a 403 | PASS |
+| Los cuatro eslabones inactivos, 403 | PASS |
+| CRUD de la matriz y semilla idempotente | PASS |
+| Esquema OpenAPI | PASS (`--validate` con código 0) |
+| Motor de base de datos que ejecuté | \_\_\_\_\_\_ : 49 pruebas en OK |
+| Otros motores | NO VERIFICADO |
+
+En la fila del motor escribe el que usas en tu `.env`. La suite solo la corrí en ese motor, así que los demás los dejo sin verificar, y no puedo afirmar que el laboratorio corriera en ellos.
+
+#### GATE AUTH/RBAC
+
+| Criterio | Verificación | Resultado |
+|----|----|----|
+| Hash de contraseña y de refresh | pruebas de login y de la matriz | PASS |
+| OPEN, JWT con token y JWT con token + RBAC | contrato y pruebas | PASS |
+| Negación por defecto | `RbacTests` | PASS |
+| 401 distinto de 403 | pruebas explícitas | PASS |
+| Swagger con Bearer | extensión OpenAPI y `--validate` | PASS |
+| Otros motores | no ejecutados | NO VERIFICADO |
+
+El GATE de la fase se supera en el motor donde corrió la suite.
+
+## **Conclusión** 
+
+Al terminar todos los ISS, puedo decir que el proyecto ActivaFit quedó completo. Fui avanzando paso a paso, desde preparar el entorno hasta controlar quién puede entrar a cada parte del sistema, y comprobando en cada unidad que lo anterior funcionaba antes de seguir.
+
+La guía del profesor fue la base, pero estaba hecha para otro proyecto, así que tuve que adaptarla a mis propias tablas, y eso me obligó a entender lo que hacía en vez de copiarlo. Cuando aparecieron errores, me apoyé en otras ayudas externas para encontrar la causa y corregirla.
+
+Con la guía y con esas ayudas pude completar con éxito todos los ISS. Me quedo con más seguridad para trabajar en proyectos como este y con una base que puedo seguir ampliando.
