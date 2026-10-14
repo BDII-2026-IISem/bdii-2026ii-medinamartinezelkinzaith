@@ -6908,3 +6908,464 @@ La suite de las seis apps de negocio y `test_missing_grant_is_403_and_missing_id
 -  **AC-22-02:** negación por defecto, 403 sin concesión y 401 sin identidad. **PASS**.
 
 -  **AC-22-03:** el perfil sigue en JWT con token. **PASS**.
+
+### ISS-23 — CRUD de la matriz
+
+**Narrativa**
+
+Con el negocio protegido, quedaba una pregunta práctica: ¿cómo se llenan las tablas de seguridad? Hasta ahora las crearon mis pruebas a mano. En esta unidad construí su CRUD por la API para que los roles, los usuarios y los permisos se puedan administrar desde ahí. La clave es que las cinco tablas no son iguales. Usuarios, roles y recursos son CRUD normales. Pero `RoleUser` y `ResourceRole` son las dos mitades de la autorización: la primera dice qué rol tiene un usuario y la segunda qué método y qué ruta puede ejecutar ese rol. `HasResourceAccess` exige las dos, así que el valor de esta unidad se ve en la prueba: un usuario recién creado recibe 403 en cada eslabón que falta y solo entra cuando la cadena queda completa. La contraseña, además, nunca viaja de vuelta ni se guarda en claro.
+
+**Objetivo**
+
+Administrar la matriz de permisos y usarla para autorizar. El CRUD crea cada fila, `RoleUser` asigna el rol al usuario y `ResourceRole` asigna el recurso al rol. Con los dos enlaces activos, ese usuario puede ejecutar la ruta concedida.
+
+**Requisitos**
+
+-  ISS-22 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Agregar los serializers de la matriz**
+
+En `apps/security/serializers.py` reemplacé la línea de import de los modelos:
+
+```         
+from apps.security.models import User
+```
+
+por este bloque:
+
+``` python
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+```
+
+Y agregué estas clases al final del archivo. La contraseña es `write_only`: se recibe, pero nunca se devuelve. Antes de guardarla pasa por los validadores de Django (largo mínimo, claves comunes, solo numéricas), y se guarda con `set_password`, que genera el hash. Los demás serializers exponen el identificador escribible y el nombre de solo lectura, igual que en el ISS-07.
+
+``` python
+class UserSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, style={"input_type": "password"})
+
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "status",
+            "password",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+    def validate_password(self, value):
+        try:
+            validate_password(value, user=self.instance)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(list(exc.messages)) from exc
+        return value
+
+    def create(self, validated_data):
+        password = validated_data.pop("password")
+        user = User(**validated_data)
+        user.set_password(password)
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Role
+        fields = ["id", "name", "description", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+        extra_kwargs = {
+            "name": {"min_length": 2, "max_length": 100},
+            "description": {"required": False, "allow_null": True, "allow_blank": True},
+        }
+
+
+class RoleUserSerializer(serializers.ModelSerializer):
+    role_id = serializers.PrimaryKeyRelatedField(source="role", queryset=Role.objects.all())
+    user_id = serializers.PrimaryKeyRelatedField(source="user", queryset=User.objects.all())
+    role_name = serializers.CharField(source="role.name", read_only=True)
+    username = serializers.CharField(source="user.username", read_only=True)
+
+    class Meta:
+        model = RoleUser
+        fields = [
+            "id",
+            "role_id",
+            "role_name",
+            "user_id",
+            "username",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "role_name", "username", "created_at", "updated_at"]
+
+
+class ResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resource
+        fields = ["id", "name", "method", "route", "status", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at"]
+
+
+class ResourceRoleSerializer(serializers.ModelSerializer):
+    resource_id = serializers.PrimaryKeyRelatedField(
+        source="resource", queryset=Resource.objects.all()
+    )
+    role_id = serializers.PrimaryKeyRelatedField(source="role", queryset=Role.objects.all())
+    resource_name = serializers.CharField(source="resource.name", read_only=True)
+    role_name = serializers.CharField(source="role.name", read_only=True)
+
+    class Meta:
+        model = ResourceRole
+        fields = [
+            "id",
+            "resource_id",
+            "resource_name",
+            "role_id",
+            "role_name",
+            "status",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "resource_name", "role_name", "created_at", "updated_at"]
+```
+
+![](images/clipboard-4251345900.png)
+
+**Paso 2. Agregar los viewsets**
+
+El archivo `apps/security/rbac_views.py` ya tiene el perfil. Lo reescribí entero, conservándolo. Los cinco viewsets heredan de `CatalogViewSet` (baja lógica, filtro `?status=` y permisos `IsAuthenticated` más `HasResourceAccess`). Solo `UserViewSet` sobrescribe la baja: al desactivar a un usuario hay que guardar también `is_active`, porque Django y SimpleJWT lo leen.
+
+``` python
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+
+from apps.common.status import RecordStatus
+from apps.common.views import CatalogViewSet
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+from apps.security.serializers import (
+    ProfileSerializer,
+    ResourceRoleSerializer,
+    ResourceSerializer,
+    RoleSerializer,
+    RoleUserSerializer,
+    UserSerializer,
+)
+
+
+class ProfileAPIView(RetrieveUpdateAPIView):
+    serializer_class = ProfileSerializer
+    permission_classes = [IsAuthenticated]
+    http_method_names = ["get", "patch", "head", "options"]
+
+    def get_object(self):
+        return self.request.user
+
+
+class UserViewSet(CatalogViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+    def perform_destroy(self, instance):
+        instance.status = RecordStatus.INACTIVE
+        instance.save(update_fields=["status", "is_active", "updated_at"])
+
+
+class RoleViewSet(CatalogViewSet):
+    queryset = Role.objects.all()
+    serializer_class = RoleSerializer
+
+
+class RoleUserViewSet(CatalogViewSet):
+    queryset = RoleUser.objects.select_related("role", "user")
+    serializer_class = RoleUserSerializer
+
+
+class ResourceViewSet(CatalogViewSet):
+    queryset = Resource.objects.all()
+    serializer_class = ResourceSerializer
+
+
+class ResourceRoleViewSet(CatalogViewSet):
+    queryset = ResourceRole.objects.select_related("resource", "role")
+    serializer_class = ResourceRoleSerializer
+```
+
+![](images/clipboard-1975516977.png)
+
+**Paso 3. Agregar las rutas**
+
+El CRUD se suma al `urls.py` que ya tiene el login, el refresh, el logout y el perfil: no hay un segundo archivo ni otro `include`. Reescribí `apps/security/urls.py` entero. `urlpatterns += router.urls` agrega las diez rutas del CRUD detrás de las cuatro de `auth/`, y el perfil se queda fuera del router a propósito: no tiene `pk` en la URL.
+
+``` python
+from django.urls import path
+from rest_framework.routers import SimpleRouter
+
+from apps.security.auth_views import LoginAPIView, LogoutAPIView, RefreshAPIView
+from apps.security.rbac_views import (
+    ProfileAPIView,
+    ResourceRoleViewSet,
+    ResourceViewSet,
+    RoleUserViewSet,
+    RoleViewSet,
+    UserViewSet,
+)
+
+router = SimpleRouter(use_regex_path=False)
+router.register("users", UserViewSet, basename="user")
+router.register("roles", RoleViewSet, basename="role")
+router.register("role-users", RoleUserViewSet, basename="role-user")
+router.register("resources", ResourceViewSet, basename="resource")
+router.register("resource-roles", ResourceRoleViewSet, basename="resource-role")
+
+urlpatterns = [
+    path("auth/login/", LoginAPIView.as_view(), name="auth-login"),
+    path("auth/refresh/", RefreshAPIView.as_view(), name="auth-refresh"),
+    path("auth/logout/", LogoutAPIView.as_view(), name="auth-logout"),
+    path("auth/profile/", ProfileAPIView.as_view(), name="auth-profile"),
+]
+
+urlpatterns += router.urls
+```
+
+![](images/clipboard-1172105263.png)
+
+**Paso 4. Agregar las pruebas**
+
+Estos endpoints son de acceso JWT con token más permisos por rol: crear un rol no es abierto, ni basta con traer el token. Por eso la prueba nace ya con `grant_crud`. Primero ajusté dos imports en `apps/security/tests.py`. Reemplacé:
+
+``` python
+from apps.common.testing import PASSWORD, create_active_user
+```
+
+por:
+
+``` python
+from apps.common.testing import PASSWORD, create_active_user, grant_crud
+```
+
+Y reemplacé:
+
+``` python
+from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser
+```
+
+por:
+
+``` python
+from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser, User
+```
+
+Después agregué esta clase al final del archivo. El `setUp` solo concede la matriz a un usuario administrador, para poder escribirla. La prueba de la cadena no llama a `grant` para el usuario nuevo: lo crea el propio POST, y después entro como él a `GET /api/clients/` para ver su efecto, eslabón por eslabón.
+
+``` python
+class SecurityMatrixApiTests(APITestCase):
+    NEW_PASSWORD = "Vitalidad-Plan-77"
+
+    def setUp(self):
+        self.admin = create_active_user(username="admin_matriz", email="admin@activafit.test")
+        for collection in ("users", "roles", "role-users", "resources", "resource-roles"):
+            grant_crud(self.admin, f"/api/{collection}/", f"/api/{collection}/1/")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_role_crud(self):
+        created = self.client.post(
+            "/api/roles/",
+            {"name": "Recepcion", "description": "Atiende la entrada"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(created.data["status"], RecordStatus.INACTIVE)
+        pk = created.data["id"]
+        self.assertEqual(self.client.get("/api/roles/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(f"/api/roles/{pk}/").status_code, status.HTTP_200_OK)
+        patched = self.client.patch(f"/api/roles/{pk}/", {"status": "active"}, format="json")
+        self.assertEqual(patched.data["status"], RecordStatus.ACTIVE)
+        deleted = self.client.delete(f"/api/roles/{pk}/")
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Role.objects.get(pk=pk).status, RecordStatus.INACTIVE)
+
+    def test_user_role_resource_chain(self):
+        role = self.client.post(
+            "/api/roles/", {"name": "recepcion", "status": "active"}, format="json"
+        )
+        self.assertEqual(role.status_code, status.HTTP_201_CREATED)
+        user = self.client.post(
+            "/api/users/",
+            {
+                "username": "recep1",
+                "email": "recep1@activafit.test",
+                "password": self.NEW_PASSWORD,
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(user.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", user.data)
+        recep = User.objects.get(pk=user.data["id"])
+
+        def clients_as(who):
+            self.client.force_authenticate(user=who)
+            code = self.client.get("/api/clients/").status_code
+            self.client.force_authenticate(user=self.admin)
+            return code
+
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        link = self.client.post(
+            "/api/role-users/",
+            {"roleId": role.data["id"], "userId": user.data["id"], "status": "active"},
+            format="json",
+        )
+        self.assertEqual(link.status_code, status.HTTP_201_CREATED)
+        duplicate = self.client.post(
+            "/api/role-users/",
+            {"roleId": role.data["id"], "userId": user.data["id"], "status": "active"},
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        resource = self.client.post(
+            "/api/resources/",
+            {
+                "name": "Listar clientes",
+                "method": "GET",
+                "route": "api/clients/",
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(resource.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        grant = self.client.post(
+            "/api/resource-roles/",
+            {
+                "resourceId": resource.data["id"],
+                "roleId": role.data["id"],
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(grant.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(clients_as(recep), status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=recep)
+        denied = self.client.post(
+            "/api/clients/",
+            {"document_type": "CC", "document_number": "1234567890", "name": "Cliente"},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_password_is_hashed_hidden_and_soft_deleted(self):
+        created = self.client.post(
+            "/api/users/",
+            {
+                "username": "hash1",
+                "email": "hash1@activafit.test",
+                "password": self.NEW_PASSWORD,
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", created.data)
+        pk = created.data["id"]
+        stored = User.objects.get(pk=pk)
+        self.assertNotEqual(stored.password, self.NEW_PASSWORD)
+        self.assertTrue(stored.check_password(self.NEW_PASSWORD))
+
+        weak = self.client.post(
+            "/api/users/",
+            {"username": "weak1", "email": "weak1@activafit.test", "password": "123"},
+            format="json",
+        )
+        self.assertEqual(weak.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "hash1", "password": self.NEW_PASSWORD},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=self.admin)
+        deleted = self.client.delete(f"/api/users/{pk}/")
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        stored.refresh_from_db()
+        self.assertEqual(stored.status, RecordStatus.INACTIVE)
+        self.assertFalse(stored.is_active)
+
+        self.client.force_authenticate(user=None)
+        blocked = self.client.post(
+            "/api/auth/login/",
+            {"username": "hash1", "password": self.NEW_PASSWORD},
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, status.HTTP_401_UNAUTHORIZED)
+```
+
+![](images/clipboard-2560815354.png)
+
+**Paso 5. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.SecurityMatrixApiTests
+```
+
+![](images/clipboard-3435149901.png)
+
+Debe terminar con `Ran 3 tests` y `OK`. Después comprueba que no rompiste nada:
+
+```         
+python manage.py test apps.security 
+python manage.py test apps.client apps.plan apps.trainer apps.routine apps.measurement apps.membership
+```
+
+![](images/clipboard-1425952215.png)
+
+La primera debe dar `Ran 22 tests` (o 29 si pegaste `RbacTests`) y la segunda `Ran 23 tests`, las dos en `OK`. .
+
+#### Explicación
+
+El CRUD de cada tabla de seguridad es homogéneo: listar, crear, leer, actualizar y dar de baja. Por eso son `ModelViewSet`, a través de `CatalogViewSet`, que además da la baja lógica y el filtro `?status=`. La contraseña cabe en el serializer: `write_only`, validada por los validadores de Django y guardada con `set_password`.
+
+Las tablas `role_users` y `resource_roles` no son un CRUD más. `RoleUser` dice qué rol tiene el usuario y `ResourceRole` dice qué método y qué ruta puede ese rol. `HasResourceAccess` exige los dos enlaces, y que el rol, el recurso y la concesión estén `active`. Un usuario creado por aquí nace `inactive` si el cuerpo no envía el estado, y hasta que alguien lo active el login responde 401.
+
+```         
+User ── RoleUser ── Role ── ResourceRole ── Resource
+recep1             recepcion               GET api/clients/
+        │
+        ▼
+HasResourceAccess
+        │
+        └── los cuatro eslabones active → la ruta responde
+```
+
+#### Cómo probarlo
+
+El comando es uno solo, y el `OK` final es la comprobación. Antes de la prueba hay un detalle que conviene entender: en este punto no puedes llamar a estos endpoints a mano, porque todos exigen una concesión y todavía nadie la tiene en la base de datos real. Es un problema del huevo y la gallina que se resuelve con la semilla del ISS-24. Por eso la prueba le concede la matriz a un administrador directamente, y después hace el resto por la API.

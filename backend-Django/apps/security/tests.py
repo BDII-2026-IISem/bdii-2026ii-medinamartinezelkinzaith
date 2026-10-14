@@ -11,9 +11,9 @@ from rest_framework.test import APIRequestFactory, APITestCase, force_authentica
 from rest_framework.views import APIView
 
 from apps.common.status import RecordStatus
-from apps.common.testing import PASSWORD, create_active_user
+from apps.common.testing import PASSWORD, create_active_user, grant_crud
 from apps.security.authentication import ActivaFitJWTAuthentication 
-from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser 
+from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser, User
 from apps.security.permissions import HasResourceAccess
 from apps.security.tokens import hash_token
 
@@ -312,4 +312,151 @@ class HasResourceAccessTests(TestCase):
         response = self._call(method="options", user=self.user)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
+class SecurityMatrixApiTests(APITestCase):
+    NEW_PASSWORD = "Vitalidad-Plan-77"
+
+    def setUp(self):
+        self.admin = create_active_user(username="admin_matriz", email="admin@activafit.test")
+        for collection in ("users", "roles", "role-users", "resources", "resource-roles"):
+            grant_crud(self.admin, f"/api/{collection}/", f"/api/{collection}/1/")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_role_crud(self):
+        created = self.client.post(
+            "/api/roles/",
+            {"name": "Recepcion", "description": "Atiende la entrada"},
+            format="json",
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(created.data["status"], RecordStatus.INACTIVE)
+        pk = created.data["id"]
+        self.assertEqual(self.client.get("/api/roles/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get(f"/api/roles/{pk}/").status_code, status.HTTP_200_OK)
+        patched = self.client.patch(f"/api/roles/{pk}/", {"status": "active"}, format="json")
+        self.assertEqual(patched.data["status"], RecordStatus.ACTIVE)
+        deleted = self.client.delete(f"/api/roles/{pk}/")
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Role.objects.get(pk=pk).status, RecordStatus.INACTIVE)
+
+    def test_user_role_resource_chain(self):
+        role = self.client.post(
+            "/api/roles/", {"name": "recepcion", "status": "active"}, format="json"
+        )
+        self.assertEqual(role.status_code, status.HTTP_201_CREATED)
+        user = self.client.post(
+            "/api/users/",
+            {
+                "username": "recep1",
+                "email": "recep1@activafit.test",
+                "password": self.NEW_PASSWORD,
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(user.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", user.data)
+        recep = User.objects.get(pk=user.data["id"])
+
+        def clients_as(who):
+            self.client.force_authenticate(user=who)
+            code = self.client.get("/api/clients/").status_code
+            self.client.force_authenticate(user=self.admin)
+            return code
+
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        link = self.client.post(
+            "/api/role-users/",
+            {"roleId": role.data["id"], "userId": user.data["id"], "status": "active"},
+            format="json",
+        )
+        self.assertEqual(link.status_code, status.HTTP_201_CREATED)
+        duplicate = self.client.post(
+            "/api/role-users/",
+            {"roleId": role.data["id"], "userId": user.data["id"], "status": "active"},
+            format="json",
+        )
+        self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        resource = self.client.post(
+            "/api/resources/",
+            {
+                "name": "Listar clientes",
+                "method": "GET",
+                "route": "api/clients/",
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(resource.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(clients_as(recep), status.HTTP_403_FORBIDDEN)
+
+        grant = self.client.post(
+            "/api/resource-roles/",
+            {
+                "resourceId": resource.data["id"],
+                "roleId": role.data["id"],
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(grant.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(clients_as(recep), status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=recep)
+        denied = self.client.post(
+            "/api/clients/",
+            {"document_type": "CC", "document_number": "1234567890", "name": "Cliente"},
+            format="json",
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_user_password_is_hashed_hidden_and_soft_deleted(self):
+        created = self.client.post(
+            "/api/users/",
+            {
+                "username": "hash1",
+                "email": "hash1@activafit.test",
+                "password": self.NEW_PASSWORD,
+                "status": "active",
+            },
+            format="json",
+        )
+        self.assertEqual(created.status_code, status.HTTP_201_CREATED)
+        self.assertNotIn("password", created.data)
+        pk = created.data["id"]
+        stored = User.objects.get(pk=pk)
+        self.assertNotEqual(stored.password, self.NEW_PASSWORD)
+        self.assertTrue(stored.check_password(self.NEW_PASSWORD))
+
+        weak = self.client.post(
+            "/api/users/",
+            {"username": "weak1", "email": "weak1@activafit.test", "password": "123"},
+            format="json",
+        )
+        self.assertEqual(weak.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.client.force_authenticate(user=None)
+        login = self.client.post(
+            "/api/auth/login/",
+            {"username": "hash1", "password": self.NEW_PASSWORD},
+            format="json",
+        )
+        self.assertEqual(login.status_code, status.HTTP_200_OK)
+
+        self.client.force_authenticate(user=self.admin)
+        deleted = self.client.delete(f"/api/users/{pk}/")
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        stored.refresh_from_db()
+        self.assertEqual(stored.status, RecordStatus.INACTIVE)
+        self.assertFalse(stored.is_active)
+
+        self.client.force_authenticate(user=None)
+        blocked = self.client.post(
+            "/api/auth/login/",
+            {"username": "hash1", "password": self.NEW_PASSWORD},
+            format="json",
+        )
+        self.assertEqual(blocked.status_code, status.HTTP_401_UNAUTHORIZED)
         
