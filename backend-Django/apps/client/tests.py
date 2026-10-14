@@ -5,9 +5,16 @@ from rest_framework.test import APITestCase
 
 from apps.client.models import Client
 from apps.common.status import RecordStatus
+from apps.common.testing import create_active_user, grant_crud
+
 
 
 class ClientApiTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/clients/", "/api/clients/1/")
+        self.client.force_authenticate(user=self.user)
+
     def test_create_defaults_and_persists(self):
         response = self.client.post(
             "/api/clients/",
@@ -105,3 +112,12 @@ class ClientApiTests(APITestCase):
         )
         self.assertEqual(updated.status_code, status.HTTP_200_OK)
         self.assertEqual(updated.data["status"], "active")
+        
+    def test_missing_grant_is_403_and_missing_identity_is_401(self):
+        outsider = create_active_user(username="sin_permiso", email="sin@activafit.test")
+        self.client.force_authenticate(user=outsider)
+        denied = self.client.get("/api/clients/")
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=None)
+        anonymous = self.client.get("/api/clients/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)

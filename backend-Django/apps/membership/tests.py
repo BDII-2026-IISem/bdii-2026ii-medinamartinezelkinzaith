@@ -5,6 +5,7 @@ from rest_framework.test import APITestCase
 
 from apps.client.models import Client
 from apps.common.status import RecordStatus
+from apps.common.testing import create_active_user, grant, grant_crud
 from unittest.mock import patch  
 from apps.membership.models import Attendance, Membership, Payment
 from apps.plan.models import Plan
@@ -12,6 +13,10 @@ from apps.plan.models import Plan
 
 class MembershipAvailableTests(APITestCase):
     def setUp(self):
+        self.user = create_active_user()
+        grant(self.user, "GET", "/api/memberships/active/")
+        self.client.force_authenticate(user=self.user)
+
         today = timezone.localdate()
         self.client_obj = Client.objects.create(
             document_type="CC",
@@ -44,6 +49,12 @@ class MembershipAvailableTests(APITestCase):
 
 class MembershipRegisterTests(APITestCase):
     def setUp(self):
+        self.user = create_active_user()
+        grant(self.user, "GET", "/api/memberships/")
+        grant(self.user, "POST", "/api/memberships/")
+        grant(self.user, "GET", "/api/memberships/1/")
+        grant(self.user, "DELETE", "/api/memberships/1/")
+        self.client.force_authenticate(user=self.user)
         self.buyer = Client.objects.create(
             document_type="CC",
             document_number="9876543210",
@@ -167,6 +178,9 @@ class MembershipRegisterTests(APITestCase):
 
 class AttendanceApiTests(APITestCase):
     def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/attendances/", "/api/attendances/1/")
+        self.client.force_authenticate(user=self.user)
         today = timezone.localdate()
         gym_client = Client.objects.create(
             document_type="CC",

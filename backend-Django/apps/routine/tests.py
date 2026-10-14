@@ -3,12 +3,18 @@ from rest_framework.test import APITestCase
 
 from apps.client.models import Client
 from apps.common.status import RecordStatus
+from apps.common.testing import create_active_user, grant_crud
 from apps.routine.models import Exercise
 from apps.trainer.models import Trainer
 
 
 class RoutineApiTests(APITestCase):
     def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/exercises/", "/api/exercises/1/")
+        grant_crud(self.user, "/api/routines/", "/api/routines/1/")
+        grant_crud(self.user, "/api/routine-exercises/", "/api/routine-exercises/1/")
+        self.client.force_authenticate(user=self.user)
         self.gym_client = Client.objects.create(
             document_type="CC",
             document_number="1234567890",

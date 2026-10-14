@@ -6539,3 +6539,372 @@ python manage.py test apps.security.tests.HasResourceAccessTests
 ![](images/clipboard-3408279675.png)
 
 Debe terminar con `Ran 5 tests` y `OK`. Con `python manage.py test apps.security` salen 19 pruebas: 6 de selección del motor, 8 de autenticación y estas 5.
+
+### ISS-22 — RBAC sobre el negocio
+
+**Narrativa**
+
+Hasta ahora ActivaFit tenía dos mundos separados: un negocio completo pero abierto, y una seguridad completa pero sin conectar. En esta unidad los uní. Cambié todas las vistas del negocio para que exijan identidad (`IsAuthenticated`) y permiso por rol (`HasResourceAccess`), y cambié el permiso por defecto del proyecto, que pasó de abierto a autenticado. No toqué la forma de ninguna operación: registrar una membresía sigue siendo lo mismo, pero ahora solo puede hacerlo quien tenga el recurso concedido. El efecto más visible es que las pruebas que escribí en la Fase I, que llamaban a la API sin token, empezaron a fallar con 401 o 403, y las arreglé creando un usuario con las concesiones que necesita cada una. Ese fallo inicial fue justo la prueba de que el candado quedó puesto.
+
+**Objetivo**
+
+Pasar el negocio de la Fase I al tercer acceso, JWT con token más permisos por rol. Hasta aquí esos endpoints no pedían JWT.
+
+**Requisitos**
+
+-  ISS-21 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+-  Las pruebas de negocio, que en la Fase I no enviaban token, ahora crean un usuario y llaman `grant()` o `grant_crud()`.
+
+#### Construcción
+
+**Paso 1. Cambiar el permiso en las vistas del negocio**
+
+El cambio es el mismo en cuatro archivos: `apps/common/views.py` (la vista base que usan planes, entrenadores, ejercicios y rutinas), `apps/client/views.py`, `apps/measurement/views.py` y `apps/membership/views.py`. En cada uno hay dos reemplazos.
+
+Reemplaza la línea de import:
+
+```         
+from rest_framework.permissions import AllowAny
+```
+
+por estas dos:
+
+```         
+from rest_framework.permissions import IsAuthenticated  
+from apps.security.permissions import HasResourceAccess
+```
+
+Y reemplaza **todas** las apariciones de:
+
+```         
+permission_classes = [AllowAny]
+```
+
+por:
+
+```         
+permission_classes = [IsAuthenticated, HasResourceAccess]
+```
+
+![](images/clipboard-292160470.png)
+
+En `apps/membership/views.py` hay cinco apariciones: `ActiveMembershipListAPIView`, `MembershipReadViewSet`, `MembershipRegisterAPIView`, `MembershipCollectionAPIView` y `AttendanceViewSet`. En `apps/common/views.py` hay una, en `CatalogViewSet`, y con eso quedan cubiertas las apps `plan`, `trainer` y `routine`. En `apps/client/views.py` y en `apps/measurement/views.py` hay una cada una. Busca con `grep -rn "AllowAny" apps` para confirmar que no quede ninguna fuera del login, el refresh y el logout, que deben seguir abiertos.
+
+![](images/clipboard-1830549462.png)
+
+**Paso 2. Cambiar el permiso por defecto del proyecto**
+
+En `config/settings/__init__.py`, dentro de `REST_FRAMEWORK`, reemplaza:
+
+```         
+        "rest_framework.permissions.AllowAny",
+```
+
+por:
+
+```         
+        "rest_framework.permissions.IsAuthenticated",
+```
+
+Con esto, cualquier vista nueva que olvide declarar permisos queda cerrada, no abierta. La documentación de Swagger no se cierra: `SPECTACULAR_SETTINGS` ya tiene su propio `SERVE_PERMISSIONS` abierto desde el ISS-14.
+
+**Paso 3. Ampliar las ayudas de prueba**
+
+El archivo `apps/common/testing.py` ya tiene `PASSWORD` y `create_active_user` desde el ISS-17. Reemplaza estas dos líneas de import:
+
+```         
+from apps.common.status import RecordStatus from apps.security.models import User
+```
+
+por este bloque:
+
+```         
+from django.urls import resolve  
+from apps.common.status import RecordStatus 
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+```
+
+Y agrega al final del archivo, debajo de `create_active_user`, las dos ayudas nuevas. `grant` crea el rol, la asignación al usuario, el recurso (usando el patrón de la ruta que devuelve `resolve`) y la concesión, todo activo. `grant_crud` concede de una vez las cinco operaciones de un CRUD.
+
+``` python
+def grant(user, method, path, role_name=None):
+    role, _created = Role.objects.get_or_create(
+        name=role_name or f"test-role-{user.pk}",
+        defaults={"description": "Rol de prueba", "status": RecordStatus.ACTIVE},
+    )
+    RoleUser.objects.get_or_create(
+        role=role,
+        user=user,
+        defaults={"status": RecordStatus.ACTIVE},
+    )
+    match = resolve(path)
+    resource, _created = Resource.objects.get_or_create(
+        method=method.upper(),
+        route=match.route,
+        defaults={
+            "name": f"{method.upper()} {match.route}",
+            "status": RecordStatus.ACTIVE,
+        },
+    )
+    ResourceRole.objects.get_or_create(
+        resource=resource,
+        role=role,
+        defaults={"status": RecordStatus.ACTIVE},
+    )
+    return role
+
+
+def grant_crud(user, collection, detail):
+    grant(user, "GET", collection)
+    grant(user, "POST", collection)
+    for method in ("GET", "PUT", "PATCH", "DELETE"):
+        grant(user, method, detail)
+```
+
+![](images/clipboard-4043000281.png)
+
+**Paso 4. Actualizar las pruebas del negocio**
+
+En cada archivo de pruebas agrego el import de las ayudas y un bloque al inicio de `setUp` que crea un usuario, concede las rutas y se autentica. Los métodos de prueba no se reescriben.
+
+**Clientes.** En `apps/client/tests.py`, debajo de `from apps.common.status import RecordStatus`, agrega:
+
+```         
+from apps.common.testing import create_active_user, grant_crud
+```
+
+Dentro de `ClientApiTests`, encima del primer método, agrega este `setUp`:
+
+``` python
+    def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/clients/", "/api/clients/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+Y al final de esa misma clase agrega la prueba del 403 y el 401, que es la que demuestra la negación por defecto:
+
+``` python
+    def test_missing_grant_is_403_and_missing_identity_is_401(self):
+        outsider = create_active_user(username="sin_permiso", email="sin@activafit.test")
+        self.client.force_authenticate(user=outsider)
+        denied = self.client.get("/api/clients/")
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+        self.client.force_authenticate(user=None)
+        anonymous = self.client.get("/api/clients/")
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+```
+
+![](images/clipboard-301449168.png)
+
+**Planes.** En `apps/plan/tests.py`, debajo de `from apps.common.status import RecordStatus`:
+
+```         
+from apps.common.testing import create_active_user, grant_crud
+```
+
+Y dentro de `PlanApiTests`, encima del primer método:
+
+``` python
+    def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/plans/", "/api/plans/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+![](images/clipboard-3972151111.png)
+
+**Entrenadores.** Igual en `apps/trainer/tests.py`: el mismo import, y dentro de `TrainerApiTests`:
+
+``` python
+    def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/trainers/", "/api/trainers/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+![](images/clipboard-4040634605.png)
+
+**Rutinas.** En `apps/routine/tests.py`, debajo de `from apps.common.status import RecordStatus`, el import:
+
+```         
+from apps.common.testing import create_active_user, grant_crud
+```
+
+`RoutineApiTests` ya tiene un `setUp`. Conservalo y agrega estas líneas al inicio, encima de `self.gym_client = ...`:
+
+``` python
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/exercises/", "/api/exercises/1/")
+        grant_crud(self.user, "/api/routines/", "/api/routines/1/")
+        grant_crud(self.user, "/api/routine-exercises/", "/api/routine-exercises/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+![](images/clipboard-4264035123.png)
+
+**Medidas.** En `apps/measurement/tests.py`, debajo de `from apps.client.models import Client`:
+
+```         
+from apps.common.testing import create_active_user, grant_crud
+```
+
+Y en el `setUp` de `MeasurementApiTests`, encima de `self.gym_client = ...`:
+
+``` python
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/measurements/", "/api/measurements/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+![](images/clipboard-3778211919.png)
+
+**Membresías y asistencias.** En `apps/membership/tests.py`, debajo de `from apps.common.status import RecordStatus`:
+
+```         
+from apps.common.testing import create_active_user, grant, grant_crud
+```
+
+En el `setUp` de `MembershipAvailableTests`, al inicio:
+
+``` python
+        self.user = create_active_user()
+        grant(self.user, "GET", "/api/memberships/active/")
+        self.client.force_authenticate(user=self.user)
+```
+
+En el `setUp` de `MembershipRegisterTests`, al inicio:
+
+``` python
+        self.user = create_active_user()
+        grant(self.user, "GET", "/api/memberships/")
+        grant(self.user, "POST", "/api/memberships/")
+        grant(self.user, "GET", "/api/memberships/1/")
+        grant(self.user, "DELETE", "/api/memberships/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+Y en el `setUp` de `AttendanceApiTests`, al inicio:
+
+``` python
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/attendances/", "/api/attendances/1/")
+        self.client.force_authenticate(user=self.user)
+```
+
+Para la membresía no concedo PUT ni PATCH, porque el detalle no los publica.
+
+![](images/clipboard-3876440842.png)
+
+**Incidencia al conectar los permisos al negocio**
+
+Al ejecutar las pruebas de las seis apps después de cambiar los permisos, 22 de las 23 pasaron y una falló: `test_missing_grant_is_403_and_missing_identity_is_401`. Esperaba un 403 para un usuario sin concesión, pero recibió un 200, lo que significaba que el endpoint de clientes seguía abierto. Era la única prueba que distinguía un endpoint abierto de uno cerrado, por eso fue la única en fallar.
+
+Con `grep -rn "AllowAny" apps` encontré que `apps/client/views.py`, `apps/measurement/views.py` y `apps/membership/views.py` todavía tenían `AllowAny`. Los cambié por `IsAuthenticated` y `HasResourceAccess`, y confirmé que `AllowAny` solo quedaba en el login, el refresh y el logout, que deben seguir abiertos.
+
+![](images/clipboard-182519742.png)
+
+![](images/clipboard-2187993255.png)
+
+**Paso 5. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.client apps.plan apps.trainer apps.routine apps.measurement apps.membership
+```
+
+![](images/clipboard-2699551570.png)
+
+Debe terminar con `Ran 23 tests` y `OK`: 5 de clientes, 2 de planes, 1 de entrenadores, 3 de rutinas, 1 de medidas y 11 de membresías. Las mismas pruebas de la Fase I siguen pasando, ahora con usuario y concesiones.
+
+Después corre las de seguridad, para confirmar que nada se rompió:
+
+```         
+python manage.py test apps.security
+```
+
+![](images/clipboard-2696834664.png)
+
+Debe dar `Ran 19 tests` y `OK`, o 26 si ya pegaste `RbacTests`.
+
+#### Explicación
+
+Este ISS no cambia la forma de ninguna operación del negocio: cambia quién puede ejecutarla. Una prueba que antes hacía un POST directo ahora falla con 401 o 403 hasta que concede el método y la ruta. Ese fallo es la prueba de que el cierre quedó puesto, y por eso arreglé las pruebas creando un usuario y concediéndole las rutas, en lugar de debilitar el permiso.
+
+Con el cambio, la API queda en tres niveles de acceso:
+
+```         
+OPEN                    login, refresh, logout, esquema (Swagger)
+                        AllowAny y authentication_classes vacías
+
+JWT con token           perfil
+                        IsAuthenticated
+
+JWT con token + RBAC    clientes, planes, entrenadores, ejercicios, rutinas,
+                        medidas, membresías, asistencias
+                        IsAuthenticated + HasResourceAccess
+```
+
+Un detalle que conviene tener presente: el superusuario del admin tampoco tiene acceso a la API de negocio por serlo. La autorización es negar por defecto, así que hasta que su rol tenga recursos concedidos recibirá 403 como cualquier otro usuario. El perfil, en cambio, sigue funcionando sin ningún rol, porque solo exige identidad.
+
+#### Cómo probarlo
+
+El comando es uno solo, y el `OK` final es la comprobación:
+
+```         
+python manage.py test apps.client apps.plan apps.trainer apps.routine apps.measurement apps.membership
+```
+
+Lo que hace cada prueba ahora, antes de llamar a la API:
+
+```         
+setUp
+  create_active_user              crea un usuario activo
+  grant / grant_crud              crea rol, asignación, recurso y concesión
+  force_authenticate              se identifica como ese usuario
+        │
+        ▼
+el mismo POST, GET, PATCH o DELETE de la Fase I
+        │
+        ├── con concesión      200, 201 o 204, como antes
+        └── sin concesión      403, y sin usuario 401
+```
+
+Si quieres verlo con tus propios ojos, usa dos terminales con el entorno activo. En la terminal 1 deja el servidor corriendo (`python manage.py runserver`). En la terminal 2, primero llama a un endpoint del negocio sin token:
+
+```         
+curl -i http://127.0.0.1:8000/api/clients/
+```
+
+Debe mostrar `HTTP/1.1 401 Unauthorized`, algo que en el ISS-08 respondía 200. Ahora haz login, copia el `access` y llama con él:
+
+```         
+curl -X POST http://127.0.0.1:8000/api/auth/login/ -H "Content-Type: application/json" -d '{"username":"TU_USUARIO","password":"TU_CLAVE"}'
+curl -i http://127.0.0.1:8000/api/clients/ -H "Authorization: Bearer PEGA_AQUI_ACCESS"
+```
+
+![](images/clipboard-986422927.png)
+
+Debe mostrar `HTTP/1.1 403 Forbidden`: sabe quién eres, pero no tienes ninguna concesión. Ver el 200 a mano necesita datos en la matriz de permisos, que se cargan con la semilla del ISS-24; hasta entonces ese caso lo cubren las pruebas. Swagger sigue el mismo comportamiento: sin token los endpoints del negocio responden 401. El botón Authorize se registra en el ISS-24.
+
+#### Criterios de aceptación
+
+-  **AC-22-01:** las pruebas de clientes, planes, entrenadores, rutinas, medidas y membresías siguen en PASS con un usuario concedido.
+
+-  **AC-22-02:** sin concesión, clientes responde 403, y sin identidad responde 401.
+
+-  **AC-22-03:** el perfil sigue sin consultar la matriz.
+
+#### Verificación
+
+La suite de las seis apps de negocio y `test_missing_grant_is_403_and_missing_identity_is_401`. Para AC-22-03, el usuario de `AuthFlowTests` lee su perfil sin tener ningún rol, y `ProfileAPIView` sigue con `permission_classes = [IsAuthenticated]`.
+
+#### GATE
+
+-  **AC-22-01:** negocio con RBAC, 23 pruebas en OK. **PASS**.
+
+-  **AC-22-02:** negación por defecto, 403 sin concesión y 401 sin identidad. **PASS**.
+
+-  **AC-22-03:** el perfil sigue en JWT con token. **PASS**.

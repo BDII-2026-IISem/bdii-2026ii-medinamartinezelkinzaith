@@ -311,3 +311,5 @@ class HasResourceAccessTests(TestCase):
     def test_options_needs_no_resource(self):
         response = self._call(method="options", user=self.user)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        

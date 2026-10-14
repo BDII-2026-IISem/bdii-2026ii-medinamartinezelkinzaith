@@ -1,10 +1,16 @@
 from rest_framework.test import APITestCase
 
 from apps.common.status import RecordStatus
+from apps.common.testing import create_active_user, grant_crud
 from apps.plan.models import Plan
 
 
 class PlanApiTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        grant_crud(self.user, "/api/plans/", "/api/plans/1/")
+        self.client.force_authenticate(user=self.user)
+            
     def test_crud_and_soft_delete(self):
         created = self.client.post(
             "/api/plans/",

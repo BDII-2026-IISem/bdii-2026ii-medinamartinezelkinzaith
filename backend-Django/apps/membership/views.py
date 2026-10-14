@@ -1,12 +1,13 @@
 from django.utils import timezone
 from rest_framework import mixins, status, viewsets
 from rest_framework.generics import ListAPIView
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema
 
 from apps.common.status import RecordStatus
+from apps.security.permissions import HasResourceAccess
 from apps.membership.models import Attendance, Membership
 from apps.membership.serializers import (
     AttendanceSerializer,
@@ -16,7 +17,7 @@ from apps.membership.serializers import (
 
 
 class ActiveMembershipListAPIView(ListAPIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
     serializer_class = MembershipSerializer
 
     def get_queryset(self):
@@ -41,7 +42,7 @@ class MembershipReadViewSet(
 ):
     queryset = Membership.objects.select_related("client", "plan").prefetch_related("payments")
     serializer_class = MembershipSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
     lookup_value_converter = "int"
 
     def perform_destroy(self, instance):
@@ -49,7 +50,7 @@ class MembershipReadViewSet(
 
 
 class MembershipRegisterAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
 
     @extend_schema(
         request=MembershipRegisterSerializer,
@@ -66,7 +67,7 @@ class MembershipRegisterAPIView(APIView):
 
 
 class MembershipCollectionAPIView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
 
     @extend_schema(responses=MembershipSerializer(many=True))
     def get(self, request, *args, **kwargs):
@@ -89,5 +90,5 @@ class MembershipCollectionAPIView(APIView):
 class AttendanceViewSet(viewsets.ModelViewSet):
     queryset = Attendance.objects.select_related("membership")
     serializer_class = AttendanceSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated, HasResourceAccess]
     lookup_value_converter = "int"
