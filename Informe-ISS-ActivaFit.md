@@ -3048,11 +3048,11 @@ Publicar una lectura filtrada que no es el CRUD de la membresía.
 
 **Requisitos**
 
--  ISS-08 superado (la API de clientes ya funciona bajo `/api/`).
+- ISS-08 superado (la API de clientes ya funciona bajo `/api/`).
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  El endpoint debe justificar `GenericAPIView`: no se crea para completar un cuadro.
+- El endpoint debe justificar `GenericAPIView`: no se crea para completar un cuadro.
 
 #### Construcción
 
@@ -3237,9 +3237,9 @@ Si quieres verlo a mano, arranca el servidor y abre [`http://127.0.0.1:8000/api/
 
 #### Criterios de aceptación
 
--  **AC-10-01:** una membresía vigente, con cliente y plan activos, aparece en la lista.
+- **AC-10-01:** una membresía vigente, con cliente y plan activos, aparece en la lista.
 
--  **AC-10-02:** al vencer (fecha de fin pasada), desaparece de esta lista y sigue en la tabla.
+- **AC-10-02:** al vencer (fecha de fin pasada), desaparece de esta lista y sigue en la tabla.
 
 #### Verificación
 
@@ -3247,9 +3247,9 @@ Si quieres verlo a mano, arranca el servidor y abre [`http://127.0.0.1:8000/api/
 
 #### GATE
 
--  **AC-10-01:** la membresía vigente aparece en la lista. **PASS**.
+- **AC-10-01:** la membresía vigente aparece en la lista. **PASS**.
 
--  **AC-10-02:** al vencer, la lista queda vacía y la fila permanece. **PASS**.
+- **AC-10-02:** al vencer, la lista queda vacía y la fila permanece. **PASS**.
 
 ### ISS-11 — Registro de membresía con APIView
 
@@ -3263,11 +3263,11 @@ Registrar una membresía como una sola transacción: cliente, plan, fechas y pag
 
 **Requisitos**
 
--  ISS-10 superado (la app `membership` ya tiene `views.py` y `urls.py`).
+- ISS-10 superado (la app `membership` ya tiene `views.py` y `urls.py`).
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  Si cualquier paso falla, no queda membresía ni pagos.
+- Si cualquier paso falla, no queda membresía ni pagos.
 
 #### Construcción
 
@@ -3700,9 +3700,9 @@ Leer una membresía con sus pagos y anularla sin borrar el histórico.
 
 **Requisitos**
 
--  ISS-11 superado.
+- ISS-11 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -3997,13 +3997,13 @@ python manage.py test apps.membership
 
 - **AC-12-01:** el GET del detalle incluye los pagos con su monto.
 
--  **AC-12-02:** el DELETE de una membresía responde 204.
+- **AC-12-02:** el DELETE de una membresía responde 204.
 
--  **AC-12-03:** la fila de `memberships` sigue existiendo en `inactive`, con sus pagos `inactive`.
+- **AC-12-03:** la fila de `memberships` sigue existiendo en `inactive`, con sus pagos `inactive`.
 
--  **AC-12-04:** anular dos veces no cambia nada más y las asistencias se conservan.
+- **AC-12-04:** anular dos veces no cambia nada más y las asistencias se conservan.
 
--  **AC-12-05:** el CRUD de asistencias funciona, el DELETE elimina la fila y una membresía inexistente responde 400.
+- **AC-12-05:** el CRUD de asistencias funciona, el DELETE elimina la fila y una membresía inexistente responde 400.
 
 ### ISS-13 — Django Admin
 
@@ -4017,11 +4017,11 @@ Dejar las tablas de ActivaFit explorables en el admin: listas filtrables, con b�
 
 **Requisitos**
 
--  ISS-12 superado.
+- ISS-12 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  `django.contrib.admin` en `INSTALLED_APPS`, que `startproject` ya incluye, y la ruta `admin/` en `config/urls.py`, que existe desde el ISS-00.
+- `django.contrib.admin` en `INSTALLED_APPS`, que `startproject` ya incluye, y la ruta `admin/` en `config/urls.py`, que existe desde el ISS-00.
 
 #### Construcción
 
@@ -4455,11 +4455,11 @@ Publicar el contrato de la API en un esquema que se genere desde las vistas, no 
 
 **Requisitos**
 
--  ISS-13 superado.
+- ISS-13 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  `drf-spectacular` 0.30.
+- `drf-spectacular` 0.30.
 
 #### Construcción
 
@@ -4675,11 +4675,11 @@ swagger-ui                        sin token
 
 #### GATE
 
--  **AC-14-01:** `--validate` sin errores. **PASS**.
+- **AC-14-01:** `--validate` sin errores. **PASS**.
 
--  **AC-14-02:** `SERVE_PERMISSIONS` en `AllowAny`. **PASS**.
+- **AC-14-02:** `SERVE_PERMISSIONS` en `AllowAny`. **PASS**.
 
--  **AC-14-03:** el hook camelCase está en `SPECTACULAR_SETTINGS`. **PASS**.
+- **AC-14-03:** el hook camelCase está en `SPECTACULAR_SETTINGS`. **PASS**.
 
 ### ISS-15 — RefreshToken
 
@@ -4693,11 +4693,11 @@ Persistir la sesión de refresh sin guardar el token en claro y sin usar la list
 
 **Requisitos**
 
--  Cierre de la Fase I superado.
+- Cierre de la Fase I superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  El modelo `User` ya existe desde el ISS-03.
+- El modelo `User` ya existe desde el ISS-03.
 
 #### Construcción
 
@@ -4879,11 +4879,11 @@ El `status` de este modelo nace `active`, y es la excepción del proyecto: el to
 
 #### Criterios de aceptación
 
--  **AC-15-01:** después del login hay una fila y su `token_hash` no es el refresh devuelto.
+- **AC-15-01:** después del login hay una fila y su `token_hash` no es el refresh devuelto.
 
--  **AC-15-02:** el hash coincide con el SHA-256 del valor devuelto.
+- **AC-15-02:** el hash coincide con el SHA-256 del valor devuelto.
 
--  **AC-15-03:** la respuesta del login no contiene `password`.
+- **AC-15-03:** la respuesta del login no contiene `password`.
 
 #### Verificación
 
@@ -4908,13 +4908,13 @@ rt.status
 rt.is_usable
 ```
 
--  `rt.token_hash != raw` debe dar `True`: lo guardado no es el valor en claro.
+- `rt.token_hash != raw` debe dar `True`: lo guardado no es el valor en claro.
 
--  `len(rt.token_hash)` debe dar `64`.
+- `len(rt.token_hash)` debe dar `64`.
 
--  La comparación con `hashlib` debe dar `True`: el hash coincide con el SHA-256 del valor.
+- La comparación con `hashlib` debe dar `True`: el hash coincide con el SHA-256 del valor.
 
--  `rt.status` debe dar `'active'` y `rt.is_usable` debe dar `True`.
+- `rt.status` debe dar `'active'` y `rt.is_usable` debe dar `True`.
 
 Para limpiar, en este orden, porque la clave foránea es `RESTRICT`:
 
@@ -4927,7 +4927,7 @@ user.delete()
 
 #### GATE
 
--  **AC-15-01:** la fila existe y su hash es distinto del valor en claro (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
+- **AC-15-01:** la fila existe y su hash es distinto del valor en claro (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
 
 - **AC-15-02:** el hash coincide con el SHA-256 (comprobado en el shell). **PASS parcial**, se completa con el login del ISS-17.
 
@@ -4945,9 +4945,9 @@ Modelar la matriz de autorización sin usar Groups ni Permissions de Django como
 
 **Requisitos**
 
--  ISS-15 superado.
+- ISS-15 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -5089,11 +5089,11 @@ Un eslabón que nace `inactive` no autoriza. Hay que activarlo a propósito, y e
 
 #### Criterios de aceptación
 
--  **AC-16-01:** las cuatro tablas existen.
+- **AC-16-01:** las cuatro tablas existen.
 
--  **AC-16-02:** no se puede repetir la pareja rol-usuario ni la pareja recurso-rol.
+- **AC-16-02:** no se puede repetir la pareja rol-usuario ni la pareja recurso-rol.
 
--  **AC-16-03:** la ruta de un recurso se guarda como patrón (`api/clients/<int:pk>/`), no como el ejemplo con el id sustituido.
+- **AC-16-03:** la ruta de un recurso se guarda como patrón (`api/clients/<int:pk>/`), no como el ejemplo con el id sustituido.
 
 #### Verificación
 
@@ -5122,9 +5122,9 @@ resolve("/api/clients/1/").route
 resolve("/api/memberships/1/").route
 ```
 
--  `role.status` debe dar `'inactive'`.
+- `role.status` debe dar `'inactive'`.
 
--  Las dos llamadas a `resolve` deben dar `'api/clients/<int:pk>/'` y `'api/memberships/<int:pk>/'`: ese es el patrón que guardaré en `Resource.route`.
+- Las dos llamadas a `resolve` deben dar `'api/clients/<int:pk>/'` y `'api/memberships/<int:pk>/'`: ese es el patrón que guardaré en `Resource.route`.
 
 ![](images/clipboard-1619432037.png)
 
@@ -5181,9 +5181,9 @@ user.delete()
 
 - **AC-16-01:** la migración está aplicada y las cuatro tablas existen. **PASS**.
 
--  **AC-16-02:** `IntegrityError` al repetir las parejas. **PASS**.
+- **AC-16-02:** `IntegrityError` al repetir las parejas. **PASS**.
 
--  **AC-16-03:** `resolve(...).route` devuelve el patrón con `<int:pk>`. **PASS parcial**, se completa cuando construya el comando que carga los recursos (ISS-24).
+- **AC-16-03:** `resolve(...).route` devuelve el patrón con `<int:pk>`. **PASS parcial**, se completa cuando construya el comando que carga los recursos (ISS-24).
 
 ### ISS-17 — Login OPEN
 
@@ -5197,11 +5197,11 @@ Demostrar la identidad por `username` o correo y entregar un access token y un r
 
 **Requisitos**
 
--  ISS-16 superado.
+- ISS-16 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  El login no puede exigir un access token: todavía no existe.
+- El login no puede exigir un access token: todavía no existe.
 
 #### Construcción
 
@@ -5504,15 +5504,15 @@ Debe responder con `access`, `refresh`, `tokenType` y `accessExpiresIn` (en came
 
 #### Criterios de aceptación
 
--  **AC-17-01:** `username` y `password` correctos responden 200 con `access` y `refresh`.
+- **AC-17-01:** `username` y `password` correctos responden 200 con `access` y `refresh`.
 
--  **AC-17-02:** el correo, aunque venga en otras mayúsculas, también entra.
+- **AC-17-02:** el correo, aunque venga en otras mayúsculas, también entra.
 
--  **AC-17-03:** un usuario `inactive` responde 401.
+- **AC-17-03:** un usuario `inactive` responde 401.
 
--  **AC-17-04:** una clave incorrecta responde 401.
+- **AC-17-04:** una clave incorrecta responde 401.
 
--  **AC-17-05:** el JSON no trae `password`.
+- **AC-17-05:** el JSON no trae `password`.
 
 #### Verificación
 
@@ -5520,15 +5520,15 @@ Debe responder con `access`, `refresh`, `tokenType` y `accessExpiresIn` (en came
 
 #### GATE
 
--  **AC-17-01:** login con `username`. **PASS**.
+- **AC-17-01:** login con `username`. **PASS**.
 
--  **AC-17-02:** login con correo. **PASS**.
+- **AC-17-02:** login con correo. **PASS**.
 
--  **AC-17-03:** usuario inactivo. **PASS**.
+- **AC-17-03:** usuario inactivo. **PASS**.
 
--  **AC-17-04:** clave incorrecta. **PASS**.
+- **AC-17-04:** clave incorrecta. **PASS**.
 
--  **AC-17-05:** sin `password` en la respuesta. **PASS**.
+- **AC-17-05:** sin `password` en la respuesta. **PASS**.
 
 ### ISS-18 — Refresh con rotación
 
@@ -5542,7 +5542,7 @@ Cambiar el refresh en cada uso y tratar la reutilización de uno viejo como una 
 
 **Requisitos**
 
--  SS-17 superado.
+- SS-17 superado.
 
 - Terminal con el entorno virtual `.venv` activo.
 
@@ -5810,13 +5810,13 @@ tambien debe responder:
 
 #### Criterios de aceptación
 
--  **AC-18-01:** el segundo refresh es distinto del primero, y el primero responde 200 la primera vez.
+- **AC-18-01:** el segundo refresh es distinto del primero, y el primero responde 200 la primera vez.
 
--  **AC-18-02:** reusar el primero responde 401.
+- **AC-18-02:** reusar el primero responde 401.
 
--  **AC-18-03:** el segundo, ya con la familia comprometida, también responde 401.
+- **AC-18-03:** el segundo, ya con la familia comprometida, también responde 401.
 
--  **AC-18-04:** un refresh vencido responde 401 y no revoca la familia.
+- **AC-18-04:** un refresh vencido responde 401 y no revoca la familia.
 
 - **AC-18-05:** un usuario inactivo no puede renovar: responde 401.
 
@@ -5826,15 +5826,15 @@ tambien debe responder:
 
 #### GATE
 
--  **AC-18-01:** rotación. **PASS**.
+- **AC-18-01:** rotación. **PASS**.
 
--  **AC-18-02:** reuso. **PASS**.
+- **AC-18-02:** reuso. **PASS**.
 
--  **AC-18-03:** familia revocada. **PASS**.
+- **AC-18-03:** familia revocada. **PASS**.
 
--  **AC-18-04:** vencido sin revocar la familia. **PASS**.
+- **AC-18-04:** vencido sin revocar la familia. **PASS**.
 
--  **AC-18-05:** usuario inactivo. **PASS**.
+- **AC-18-05:** usuario inactivo. **PASS**.
 
 ### ISS-19 — Logout
 
@@ -5850,7 +5850,7 @@ Invalidar el refresh que se presenta, sin guardar el access token.
 
 - ISS-18 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -6038,13 +6038,13 @@ Debe mostrar `HTTP/1.1 401 Unauthorized` con `Refresh inválido.` Si te da 200, 
 
 #### Criterios de aceptación
 
--  **AC-19-01:** el logout responde 204.
+- **AC-19-01:** el logout responde 204.
 
--  **AC-19-02:** ese refresh ya no puede renovar: el refresh siguiente responde 401.
+- **AC-19-02:** ese refresh ya no puede renovar: el refresh siguiente responde 401.
 
--  **AC-19-03:** un segundo logout del mismo token, si no fue rotado, también responde 204.
+- **AC-19-03:** un segundo logout del mismo token, si no fue rotado, también responde 204.
 
--  **AC-19-04:** un token desconocido o ya rotado responde 401, y el rotado apaga la familia.
+- **AC-19-04:** un token desconocido o ya rotado responde 401, y el rotado apaga la familia.
 
 #### Verificación
 
@@ -6052,13 +6052,13 @@ Debe mostrar `HTTP/1.1 401 Unauthorized` con `Refresh inválido.` Si te da 200, 
 
 #### GATE
 
--  **AC-19-01:** HTTP 204. **PASS**.
+- **AC-19-01:** HTTP 204. **PASS**.
 
--  **AC-19-02:** el refresh posterior responde 401. **PASS**.
+- **AC-19-02:** el refresh posterior responde 401. **PASS**.
 
--  **AC-19-03:** el segundo logout responde 204. **PASS**.
+- **AC-19-03:** el segundo logout responde 204. **PASS**.
 
--  **AC-19-04:** desconocido o rotado responde 401, y la familia queda revocada. **PASS**.
+- **AC-19-04:** desconocido o rotado responde 401, y la familia queda revocada. **PASS**.
 
 ### ISS-20 — Perfil JWT con token
 
@@ -6072,9 +6072,9 @@ Responder quién es el llamador usando JWT: firma válida, vigencia y usuario ac
 
 **Requisitos**
 
--  ISS-19 superado.
+- ISS-19 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -6316,13 +6316,13 @@ Ese cambio queda guardado en tu usuario real. En Swagger (`/api/schema/swagger-u
 
 #### Criterios de aceptación
 
--  **AC-20-01:** sin header, GET del perfil responde 401.
+- **AC-20-01:** sin header, GET del perfil responde 401.
 
--  **AC-20-02:** con un access válido responde 200 y no incluye `password`.
+- **AC-20-02:** con un access válido responde 200 y no incluye `password`.
 
--  **AC-20-03:** el PATCH de `firstName` se guarda.
+- **AC-20-03:** el PATCH de `firstName` se guarda.
 
--  **AC-20-04:** si el usuario pasa a `inactive`, el mismo access responde 401.
+- **AC-20-04:** si el usuario pasa a `inactive`, el mismo access responde 401.
 
 - **AC-20-05:** el PATCH no puede cambiar `username` ni `status`.
 
@@ -6332,12 +6332,210 @@ Ese cambio queda guardado en tu usuario real. En Swagger (`/api/schema/swagger-u
 
 #### GATE
 
--  **AC-20-01:** anónimo, 401. **PASS**.
+- **AC-20-01:** anónimo, 401. **PASS**.
 
--  **AC-20-02:** perfil sin `password`. **PASS**.
+- **AC-20-02:** perfil sin `password`. **PASS**.
 
--  **AC-20-03:** PATCH guardado. **PASS**.
+- **AC-20-03:** PATCH guardado. **PASS**.
 
--  **AC-20-04:** usuario desactivado, 401. **PASS**.
+- **AC-20-04:** usuario desactivado, 401. **PASS**.
 
--  **AC-20-05:** `username` y `status` de solo lectura. **PASS**.
+- **AC-20-05:** `username` y `status` de solo lectura. **PASS**.
+
+### ISS-21 — HasResourceAccess
+
+Con el perfil ya protegido por JWT, me faltaba la otra mitad de la seguridad: la autorización. Saber quién es el usuario no basta para saber qué puede hacer. Escribí una clase de permiso, `HasResourceAccess`, que responde esa pregunta mirando la matriz que modelé en el ISS-16: toma el método HTTP y el patrón de la ruta de la petición y comprueba que exista una cadena completa y activa desde el usuario hasta ese recurso (usuario, asignación de rol, rol, concesión y recurso). Si falta un solo eslabón, o alguno está inactivo, el acceso se niega. No hay permisos implícitos: todo lo que no esté concedido de forma explícita queda prohibido.
+
+**Objetivo**
+
+Autorizar por método y patrón de ruta, con negación por defecto. Es la mitad de autorización del acceso JWT con token más permisos por rol. Sola no autentica: el JWT ya tuvo que identificar al usuario.
+
+**Requisitos**
+
+- ISS-20 superado.
+
+- Los modelos del ISS-16 existen.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 1. Crear la clase de permiso**
+
+El archivo `apps/security/permissions.py` es nuevo. Compara `request.method` con `request.resolver_match.route` (el patrón, no la URL real) y exige que estén activos el usuario, la asignación del rol, el rol, la concesión y el recurso. `HEAD` se evalúa como `GET`. `OPTIONS`, si ya hay un usuario activo, no busca recurso: es el preflight del navegador, no una operación de negocio.
+
+``` python
+from rest_framework.permissions import BasePermission
+
+from apps.common.status import RecordStatus
+from apps.security.models import ResourceRole
+
+
+class HasResourceAccess(BasePermission):
+    message = "No tiene autorización para ejecutar esta operación."
+
+    def has_permission(self, request, view):
+        user = request.user
+        if not user or not user.is_authenticated:
+            return False
+        if getattr(user, "status", None) != RecordStatus.ACTIVE:
+            return False
+        if request.method.upper() == "OPTIONS":
+            return True
+
+        match = request.resolver_match
+        if match is None:
+            return False
+        method = request.method.upper()
+        if method == "HEAD":
+            method = "GET"
+        return ResourceRole.objects.filter(
+            status=RecordStatus.ACTIVE,
+            resource__status=RecordStatus.ACTIVE,
+            resource__method=method,
+            resource__route=match.route,
+            role__status=RecordStatus.ACTIVE,
+            role__assignments__user=user,
+            role__assignments__status=RecordStatus.ACTIVE,
+        ).exists()
+```
+
+![](images/clipboard-3912762071.png)
+
+**Paso 2. Ajustar los imports de las pruebas**
+
+Todavía no puedo probar la clase contra `/api/clients/`, porque ese endpoint sigue abierto hasta el ISS-22. Así que la pruebo con una vista de prueba mínima (`ProbeView`), declarada dentro de `apps/security/tests.py`, que usa la misma autenticación y el mismo permiso que usarán los endpoints reales. Primero ajusté los imports del archivo. Reemplacé estas líneas:
+
+```         
+from django.test import SimpleTestCase
+```
+
+por
+
+```         
+from django.test import SimpleTestCase, TestCase 
+from django.urls import resolve
+```
+
+La línea de `rest_framework.test`:
+
+```         
+from rest_framework.test import APITestCase
+```
+
+por
+
+```         
+from rest_framework.response import Response 
+from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate from rest_framework.views import APIView
+```
+
+Y la línea de los modelos:
+
+```         
+from apps.security.models import RefreshToken
+```
+
+por
+
+```         
+from apps.security.authentication import ActivaFitJWTAuthentication 
+from apps.security.models import RefreshToken, Resource, ResourceRole, Role, RoleUser 
+from apps.security.permissions import HasResourceAccess
+```
+
+**Paso 3. Agregar las pruebas**
+
+Al final de `apps/security/tests.py` agregué la vista de prueba y la clase nueva. `_call` arma una petición a una ruta real, le pone el `resolver_match` (lo que haría el servidor) y, si le paso un usuario, lo deja autenticado con `force_authenticate`. Sin usuario, la petición llega anónima y DRF responde 401; con usuario pero sin concesión, responde 403.
+
+``` python
+class ProbeView(APIView):
+    authentication_classes = [ActivaFitJWTAuthentication]
+    permission_classes = [HasResourceAccess]
+
+    def get(self, request, *args, **kwargs):
+        return Response({"ok": True})
+
+
+class HasResourceAccessTests(TestCase):
+    def setUp(self):
+        self.user = create_active_user(username="recepcion", email="recepcion@activafit.test")
+        self.role = Role.objects.create(name="Recepcionista", status=RecordStatus.ACTIVE)
+        self.assignment = RoleUser.objects.create(
+            role=self.role, user=self.user, status=RecordStatus.ACTIVE
+        )
+        self.resource = Resource.objects.create(
+            name="Listar clientes",
+            method="GET",
+            route="api/clients/",
+            status=RecordStatus.ACTIVE,
+        )
+
+    def _grant(self, resource=None):
+        return ResourceRole.objects.create(
+            resource=resource or self.resource,
+            role=self.role,
+            status=RecordStatus.ACTIVE,
+        )
+
+    def _call(self, path="/api/clients/", method="get", user=None):
+        request = getattr(APIRequestFactory(), method)(path)
+        request.resolver_match = resolve(path)
+        if user is not None:
+            force_authenticate(request, user=user)
+        return ProbeView.as_view()(request)
+
+    def test_denied_without_grant_and_unauthenticated(self):
+        anonymous = self._call()
+        self.assertEqual(anonymous.status_code, status.HTTP_401_UNAUTHORIZED)
+        no_grant = self._call(user=self.user)
+        self.assertEqual(no_grant.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_grant_allows_get_and_head(self):
+        self._grant()
+        allowed = self._call(user=self.user)
+        self.assertEqual(allowed.status_code, status.HTTP_200_OK)
+        head = self._call(method="head", user=self.user)
+        self.assertEqual(head.status_code, status.HTTP_200_OK)
+
+    def test_each_inactive_link_returns_403(self):
+        grant = self._grant()
+        for link in (self.role, self.assignment, grant, self.resource):
+            with self.subTest(link=link.__class__.__name__):
+                link.status = RecordStatus.INACTIVE
+                link.save()
+                denied = self._call(user=self.user)
+                self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+                link.status = RecordStatus.ACTIVE
+                link.save()
+        self.assertEqual(self._call(user=self.user).status_code, status.HTTP_200_OK)
+
+    def test_route_pattern_matches_any_id(self):
+        detail = Resource.objects.create(
+            name="Detalle de cliente",
+            method="GET",
+            route="api/clients/<int:pk>/",
+            status=RecordStatus.ACTIVE,
+        )
+        self._grant(detail)
+        for path in ("/api/clients/15/", "/api/clients/16/"):
+            with self.subTest(path=path):
+                response = self._call(path=path, user=self.user)
+                self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_options_needs_no_resource(self):
+        response = self._call(method="options", user=self.user)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+```
+
+![](images/clipboard-2523343784.png)
+
+**Paso 4. Ejecutar las pruebas**
+
+```         
+python manage.py test apps.security.tests.HasResourceAccessTests
+```
+
+![](images/clipboard-3408279675.png)
+
+Debe terminar con `Ran 5 tests` y `OK`. Con `python manage.py test apps.security` salen 19 pruebas: 6 de selección del motor, 8 de autenticación y estas 5.
