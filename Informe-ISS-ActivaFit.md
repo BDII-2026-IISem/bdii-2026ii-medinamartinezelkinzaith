@@ -7369,3 +7369,370 @@ HasResourceAccess
 #### Cómo probarlo
 
 El comando es uno solo, y el `OK` final es la comprobación. Antes de la prueba hay un detalle que conviene entender: en este punto no puedes llamar a estos endpoints a mano, porque todos exigen una concesión y todavía nadie la tiene en la base de datos real. Es un problema del huevo y la gallina que se resuelve con la semilla del ISS-24. Por eso la prueba le concede la matriz a un administrador directamente, y después hace el resto por la API.
+
+### ISS-24 — Semilla RBAC y Swagger con Bearer
+
+**Narrativa**
+
+Con la matriz construida y el negocio protegido, quedaba un problema práctico: todos los endpoints exigen una concesión, pero para crear la primera concesión hay que usar un endpoint que también la exige. Las pruebas lo esquivaban dándole los permisos al usuario directamente, pero a mano no había forma de entrar. En esta unidad lo resolví con un comando, `seed_rbac`, que lee las rutas reales del proyecto, crea un recurso por cada método y ruta, crea el rol `admin`, le concede todo y se lo asigna a mi superusuario. También hice que Swagger entienda el JWT: ahora tiene un botón Authorize donde pego el access token, y puedo recorrer la API entera desde el navegador, con el token puesto.
+
+**Objetivo**
+
+Cargar la matriz desde las rutas reales y poder probar el JWT en Swagger.
+
+**Requisitos**
+
+- ISS-23 superado.
+
+- Terminal con el entorno virtual `.venv` activo.
+
+- Un superusuario con `status` activo (el que creé con `createsuperuser` en el ISS-13).
+
+#### Construcción
+
+**Paso 1. Crear la extensión del esquema**
+
+El archivo `apps/security/schema.py` es nuevo. Le explica a drf-spectacular cómo se autentica mi clase `ActivaFitJWTAuthentication`, para que Swagger muestre el botón Authorize con el esquema `http` / `bearer`.
+
+``` python
+  from drf_spectacular.extensions import OpenApiAuthenticationExtension
+  
+  
+  class ActivaFitJWTScheme(OpenApiAuthenticationExtension):
+      target_class = "apps.security.authentication.ActivaFitJWTAuthentication"
+      name = "bearerAuth"
+  
+      def get_security_definition(self, auto_schema):
+          return {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+```
+
+![](images/clipboard-2718065768.png)
+
+**Paso 2. Cargar la extensión al arrancar**
+
+El archivo `apps/security/apps.py` ya existe. Debajo de la línea `label = "security"` agregué el método `ready`, con la sangría de la clase:
+
+``` python
+     def ready(self):
+        from apps.security import schema
+```
+
+![](images/clipboard-1488485694.png)
+
+Django llama a `ready` cuando termina de cargar las apps, y ahí es donde importo el módulo para que spectacular registre la extensión.
+
+**Paso 3. Crear los paquetes del comando**
+
+Django descubre los comandos en `management/commands`, siempre que existan los `__init__.py`:
+
+``` bash
+mkdir -p apps/security/management/commands
+touch apps/security/management/__init__.py
+touch apps/security/management/commands/__init__.py
+```
+
+**Paso 4. Escribir el comando `seed_rbac`**
+
+El archivo `apps/security/management/commands/seed_rbac.py` es nuevo. Arma una lista de método y ruta de muestra, llama a `resolve()` para obtener el patrón real de cada ruta (por ejemplo `api/clients/<int:pk>/`) y crea el recurso con `get_or_create`, así que se puede ejecutar varias veces sin duplicar nada. Crea o reactiva el rol `admin` y le concede todos esos recursos. No incluye el login, el refresh, el logout ni el perfil, porque esos accesos no pasan por la matriz.
+
+``` python
+from django.core.management.base import BaseCommand, CommandError
+from django.db import transaction
+from django.urls import resolve
+
+from apps.common.status import RecordStatus
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+
+CRUD_COLLECTIONS = (
+    "clients",
+    "trainers",
+    "plans",
+    "exercises",
+    "routines",
+    "routine-exercises",
+    "measurements",
+    "attendances",
+    "users",
+    "roles",
+    "role-users",
+    "resources",
+    "resource-roles",
+)
+
+
+def build_samples():
+    samples = []
+    for name in CRUD_COLLECTIONS:
+        samples.append(("GET", f"/api/{name}/"))
+        samples.append(("POST", f"/api/{name}/"))
+        for method in ("GET", "PUT", "PATCH", "DELETE"):
+            samples.append((method, f"/api/{name}/1/"))
+    samples += [
+        ("GET", "/api/memberships/active/"),
+        ("GET", "/api/memberships/"),
+        ("POST", "/api/memberships/"),
+        ("GET", "/api/memberships/1/"),
+        ("DELETE", "/api/memberships/1/"),
+    ]
+    return samples
+
+
+def activate(instance):
+    if instance.status != RecordStatus.ACTIVE:
+        instance.status = RecordStatus.ACTIVE
+        instance.save(update_fields=["status", "updated_at"])
+
+
+class Command(BaseCommand):
+    help = "Carga los recursos RBAC desde las rutas reales y los concede al rol admin."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--username",
+            help="Usuario al que se le asigna el rol admin.",
+        )
+
+    @transaction.atomic
+    def handle(self, *args, **options):
+        username = options.get("username")
+        user = None
+        if username:
+            try:
+                user = User.objects.get(username=username)
+            except User.DoesNotExist as exc:
+                raise CommandError(f"No existe el usuario '{username}'.") from exc
+            if user.status != RecordStatus.ACTIVE:
+                self.stderr.write(
+                    self.style.WARNING(
+                        f"El usuario '{username}' no está active: no podrá iniciar sesión."
+                    )
+                )
+
+        role, _created = Role.objects.get_or_create(
+            name="admin",
+            defaults={
+                "description": "Administrador de ActivaFit",
+                "status": RecordStatus.ACTIVE,
+            },
+        )
+        activate(role)
+
+        created_resources = 0
+        created_grants = 0
+
+        for method, path in build_samples():
+            route = resolve(path).route
+            resource, resource_created = Resource.objects.get_or_create(
+                method=method,
+                route=route,
+                defaults={"name": f"{method} {route}", "status": RecordStatus.ACTIVE},
+            )
+            if resource_created:
+                created_resources += 1
+            activate(resource)
+            grant, grant_created = ResourceRole.objects.get_or_create(
+                resource=resource,
+                role=role,
+                defaults={"status": RecordStatus.ACTIVE},
+            )
+            if grant_created:
+                created_grants += 1
+            activate(grant)
+
+        if user is not None:
+            link, _created = RoleUser.objects.get_or_create(
+                role=role,
+                user=user,
+                defaults={"status": RecordStatus.ACTIVE},
+            )
+            activate(link)
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Recursos RBAC sincronizados. "
+                f"Recursos nuevos: {created_resources}. "
+                f"Permisos nuevos: {created_grants}."
+            )
+        )
+```
+
+![](images/clipboard-1918744764.png)
+
+Valido que el usuario exista antes de sembrar nada: si el nombre está mal escrito, el comando falla sin tocar la base de datos.
+
+**Paso 5. Ejecutar la semilla**
+
+Cambia `TU_USUARIO` por el nombre de tu superusuario:
+
+```         
+python manage.py seed_rbac --username TU_USUARIO
+```
+
+![](images/clipboard-2873324078.png)
+
+Debe mostrar `Recursos RBAC sincronizados.` Puedes ejecutarlo otra vez sin problema: no duplica filas, solo reactiva lo que esté inactivo.
+
+**Paso 6. Agregar una prueba automática**
+
+La guía no trae prueba para este comando, pero la agregué para verificarlo sin depender de Swagger. En `apps/security/tests.py` agregué primero estos imports, debajo de las demás líneas de import:
+
+``` python
+from io import StringIO  
+from django.core.management import call_command
+```
+
+Y al final del archivo agregué esta clase. Ejecuta la semilla dos veces para comprobar que no duplica, revisa que guarde patrones con `<int:pk>` y no rutas de `auth`, y confirma que el usuario sembrado ya entra al negocio.
+
+``` python
+class SeedRbacTests(APITestCase):
+    def test_seed_is_idempotent_and_grants_the_admin_role(self):
+        user = create_active_user(username="admin_seed", email="admin_seed@activafit.test")
+        call_command("seed_rbac", username="admin_seed", stdout=StringIO())
+        first = Resource.objects.count()
+        call_command("seed_rbac", username="admin_seed", stdout=StringIO())
+        self.assertEqual(Resource.objects.count(), first)
+        self.assertTrue(
+            Resource.objects.filter(method="GET", route="api/clients/<int:pk>/").exists()
+        )
+        self.assertFalse(Resource.objects.filter(route__startswith="api/auth/").exists())
+        self.assertTrue(
+            RoleUser.objects.filter(
+                role__name="admin", user=user, status=RecordStatus.ACTIVE
+            ).exists()
+        )
+        self.assertEqual(
+            ResourceRole.objects.filter(role__name="admin", status=RecordStatus.ACTIVE).count(),
+            first,
+        )
+
+        self.client.force_authenticate(user=user)
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get("/api/plans/").status_code, status.HTTP_200_OK)
+```
+
+![](images/clipboard-1288414843.png)
+
+**Paso 7. Verificar**
+
+``` bash
+python manage.py test apps.security.tests.SeedRbacTests
+python manage.py spectacular --validate --file /tmp/activafit-schema.yml
+echo $?
+grep -n "bearerAuth" /tmp/activafit-schema.yml
+```
+
+![](images/clipboard-2166764453.png)
+
+La prueba debe dar `Ran 1 test` y `OK`. El `echo $?` debe imprimir `0` (el código de salida de `--validate`), y el `grep` debe mostrar líneas con `bearerAuth`, lo que confirma que el esquema incluye el Bearer.
+
+#### Explicación
+
+Sembrar las rutas a mano como texto (`/api/clients/1/`) se rompe en cuanto cambia el convertidor de la ruta. `resolve(path).route` devuelve exactamente el patrón que el permiso va a leer en cada petición, que es `api/clients/<int:pk>/`, así que la semilla y el permiso no pueden divergir. Usé `get_or_create`, por eso el comando se puede repetir.
+
+Swagger queda abierto para poder leer la documentación, pero las operaciones del negocio dentro de Swagger siguen exigiendo el token: Authorize no abre nada, solo me deja enviar el JWT. El esquema es `http` / `bearer`, así que en Authorize pego solamente el valor de `access`, sin escribir la palabra `Bearer`.
+
+```         
+createsuperuser → usuario activo
+        │
+        ▼
+seed_rbac --username
+        │
+        ▼
+resolve(ruta).route → Resource → ResourceRole(admin) → RoleUser
+        │
+        ▼
+login → access → Authorize → los endpoints responden 200
+```
+
+#### Cómo probarlo
+
+Hay dos comprobaciones. La automática es un solo comando, y el `OK` final es la prueba:
+
+```         
+python manage.py test apps.security.tests.SeedRbacTests
+```
+
+![](images/clipboard-1015719687.png)
+
+La manual, en Swagger, te deja ver con tus propios ojos los tres niveles de acceso. Con el entorno activo, en una terminal:
+
+```         
+python manage.py seed_rbac --username TU_USUARIO 
+python manage.py runserver
+```
+
+![](images/clipboard-293558920.png)
+
+Y en el navegador, [`http://127.0.0.1:8000/api/schema/swagger-ui/`](http://127.0.0.1:8000/api/schema/swagger-ui/). Sigue estos pasos:
+
+1.   Abre `POST /api/auth/login/`, pulsa **Try it out**, escribe tu `username` y `password`, y pulsa **Execute**. Esta ruta es abierta, no pide token. Copia solo el valor de `access`.
+
+    ![](images/clipboard-125481204.png)
+
+    ![](images/clipboard-3481539800.png)
+
+2.   Pulsa el botón **Authorize** (arriba a la derecha), pega ese valor y confirma. No escribas `Bearer`.
+
+    ![](images/clipboard-2377766684.png)
+
+    ![](images/clipboard-431903387.png)
+
+3.   Abre `GET /api/clients/` y ejecútalo. Debe responder **200**: tu usuario ya tiene el rol `admin` con todas las rutas concedidas.
+
+    ![](images/clipboard-4294229112.png)
+
+4.   Para ver el 403, crea otro usuario sin rol. Con tu token puesto, ejecuta `POST /api/users/` con este cuerpo:
+
+```         
+{"username": "visita", "email": "visita@activafit.test", "password": "Vitalidad-Plan-77", "status": "active"}
+```
+
+![](images/clipboard-2336597306.png)
+
+![](images/clipboard-1727710466.png)
+
+5.   Pulsa **Authorize**, cierra la sesión del token actual y vuelve a hacer login, esta vez con `visita`. Autoriza con su `access`.
+
+![](images/clipboard-2852613721.png)
+
+5.   Ejecuta `GET /api/clients/`: debe responder **403**, porque `visita` no tiene ningún rol. Ejecuta `GET /api/auth/profile/`: debe responder **200**, porque el perfil solo pide identidad. Si cierras la sesión de Authorize del todo, `GET /api/clients/` responde **401**.
+
+6.   Con `curl` es lo mismo. Haz login, copia el `access` y llama al negocio (pega el tuyo en lugar de `PEGA_AQUI_ACCESS`); ahora responde 200 en lugar del 403 que viste en el ISS-22:
+
+```         
+curl -i http://127.0.0.1:8000/api/clients/ -H "Authorization: Bearer PEGA_AQUI_ACCESS"
+```
+
+## Evidencia:
+
+![](images/clipboard-832119660.png)
+
+![](images/clipboard-3623678217.png)
+
+![](images/clipboard-1645020744.png)
+
+El usuario `visita` y todo lo que crees desde Swagger queda en tu base de datos real.
+
+#### Criterios de aceptación
+
+-  **AC-24-01:** `seed_rbac` termina sin error, y repetirlo no duplica filas.
+
+-  **AC-24-02:** las rutas guardadas usan `<int:pk>`.
+
+-  **AC-24-03:** `spectacular --validate` sale con código 0 e incluye el esquema Bearer.
+
+-  **AC-24-04:** el usuario sembrado entra al negocio con 200, y un usuario sin rol recibe 403.
+
+#### Verificación
+
+`SeedRbacTests` y los comandos del Paso 7, más el recorrido de Swagger.
+
+#### GATE
+
+-  **AC-24-01:** el comando termina bien y es idempotente. **PASS**.
+
+-  **AC-24-02:** existe `GET api/clients/<int:pk>/` en `resources`. **PASS**.
+
+-  **AC-24-03:** `--validate` con código 0 y `bearerAuth` en el esquema. **PASS**.
+
+-  **AC-24-04:** el administrador sembrado recibe 200 y `visita` recibe 403. **PAS**

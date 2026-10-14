@@ -9,6 +9,8 @@ from rest_framework import status
 from rest_framework.response import Response 
 from rest_framework.test import APIRequestFactory, APITestCase, force_authenticate 
 from rest_framework.views import APIView
+from io import StringIO  
+from django.core.management import call_command
 
 from apps.common.status import RecordStatus
 from apps.common.testing import PASSWORD, create_active_user, grant_crud
@@ -459,4 +461,29 @@ class SecurityMatrixApiTests(APITestCase):
             format="json",
         )
         self.assertEqual(blocked.status_code, status.HTTP_401_UNAUTHORIZED)
+
+class SeedRbacTests(APITestCase):
+    def test_seed_is_idempotent_and_grants_the_admin_role(self):
+        user = create_active_user(username="admin_seed", email="admin_seed@activafit.test")
+        call_command("seed_rbac", username="admin_seed", stdout=StringIO())
+        first = Resource.objects.count()
+        call_command("seed_rbac", username="admin_seed", stdout=StringIO())
+        self.assertEqual(Resource.objects.count(), first)
+        self.assertTrue(
+            Resource.objects.filter(method="GET", route="api/clients/<int:pk>/").exists()
+        )
+        self.assertFalse(Resource.objects.filter(route__startswith="api/auth/").exists())
+        self.assertTrue(
+            RoleUser.objects.filter(
+                role__name="admin", user=user, status=RecordStatus.ACTIVE
+            ).exists()
+        )
+        self.assertEqual(
+            ResourceRole.objects.filter(role__name="admin", status=RecordStatus.ACTIVE).count(),
+            first,
+        )
+
+        self.client.force_authenticate(user=user)
+        self.assertEqual(self.client.get("/api/clients/").status_code, status.HTTP_200_OK)
+        self.assertEqual(self.client.get("/api/plans/").status_code, status.HTTP_200_OK)
         

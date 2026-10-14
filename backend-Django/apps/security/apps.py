@@ -5,3 +5,5 @@ class SecurityConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.security'
     label = 'security'
+    def ready(self):
+        from apps.security import schema
