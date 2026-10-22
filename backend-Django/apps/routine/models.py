@@ -71,9 +71,7 @@ class RoutineExercise(ActivaFitModel):
         validators=[MinValueValidator(Decimal("0"))],
     )
     rest_seconds = models.PositiveIntegerField(default=0)
-    name = models.CharField(max_length=120)
-    description = models.CharField(max_length=255, null=True, blank=True)
-    muscle_group = models.CharField(max_length=50)
+
 
     class Meta:
         db_table = "routine_exercises"
@@ -89,4 +87,4 @@ class RoutineExercise(ActivaFitModel):
         ]
 
     def __str__(self):
-        return f"{self.routine_id} - {self.name}"
+        return f"{self.routine_id} - {self.exercise_id}"

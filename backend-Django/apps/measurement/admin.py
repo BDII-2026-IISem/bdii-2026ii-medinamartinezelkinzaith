@@ -8,20 +8,19 @@ class MeasurementAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "client",
-        "trainer",
         "weight",
         "height",
         "body_fat",
         "bmi",
         "created_at",
     )
-    search_fields = ("client__name", "trainer__name")
+    search_fields = ("client__name",)
     ordering = ("-created_at",)
     date_hierarchy = "created_at"
-    autocomplete_fields = ("client", "trainer")
+    autocomplete_fields = ("client",)
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
-        ("Asignación", {"fields": ("client", "trainer")}),
+        ("Asignación", {"fields": ("client",)}),
         ("Medidas", {"fields": ("weight", "height", "body_fat", "bmi")}),
         (
             "Auditoría",
@@ -30,4 +29,4 @@ class MeasurementAdmin(admin.ModelAdmin):
     )
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related("client", "trainer")
+        return super().get_queryset(request).select_related("client")

@@ -13,12 +13,6 @@ class Measurement(TimeStampedModel):
         related_name="measurements",
         db_column="client_id",
     )
-    trainer = models.ForeignKey(
-        "trainer.Trainer",
-        on_delete=models.RESTRICT,
-        related_name="measurements",
-        db_column="trainer_id",
-    )
     weight = models.DecimalField(
         max_digits=5,
         decimal_places=2,

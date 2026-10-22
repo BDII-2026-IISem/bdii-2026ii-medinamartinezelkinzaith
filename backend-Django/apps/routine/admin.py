@@ -53,15 +53,14 @@ class RoutineExerciseAdmin(admin.ModelAdmin):
         "rest_seconds",
         "status",
     )
-    list_filter = ("status", "muscle_group")
-    search_fields = ("routine__name", "exercise__name", "name")
+    list_filter = ("status",)
+    search_fields = ("routine__name", "exercise__name")
     list_editable = ("sets", "repetitions", "weight", "rest_seconds", "status")
     autocomplete_fields = ("routine", "exercise")
     readonly_fields = ("created_at", "updated_at")
     fieldsets = (
         ("Asignación", {"fields": ("routine", "exercise")}),
         ("Series y carga", {"fields": ("sets", "repetitions", "weight", "rest_seconds")}),
-        ("Descripción", {"fields": ("name", "description", "muscle_group")}),
         ("Estado", {"fields": ("status",)}),
         (
             "Auditoría",
