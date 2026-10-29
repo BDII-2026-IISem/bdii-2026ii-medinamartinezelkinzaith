@@ -1,0 +1,96 @@
+<div class="rounded-2xl border border-white/10 bg-[#0A0F1B] p-4 text-white shadow-xl sm:p-6">
+  <div class="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <div>
+      <h2 class="text-2xl font-black tracking-tight sm:text-3xl">
+        Gestión de <span class="text-lime-300">Clientes</span>
+      </h2>
+      <p class="mt-1 text-sm text-slate-400">Administra la información de tus clientes.</p>
+    </div>
+
+    <p-button
+      label="Nuevo cliente"
+      icon="pi pi-plus"
+      [routerLink]="['/clients/new']"
+      styleClass="!rounded-xl !border-none !bg-lime-300 !font-bold !text-slate-950 hover:!bg-lime-200"
+    />
+  </div>
+
+  <p-table
+    [value]="(clients$ | async) ?? []"
+    [loading]="loading"
+    [paginator]="true"
+    [rows]="10"
+    [rowsPerPageOptions]="[5, 10, 25, 50]"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} registros"
+    dataKey="id"
+    styleClass="p-datatable-striped"
+    [tableStyle]="{ 'min-width': '50rem' }"
+  >
+    <ng-template #header>
+      <tr>
+        <th pSortableColumn="id">ID <p-sorticon field="id" /></th>
+        <th pSortableColumn="documentType">Tipo doc. <p-sorticon field="documentType" /></th>
+        <th pSortableColumn="documentNumber">Documento <p-sorticon field="documentNumber" /></th>
+        <th pSortableColumn="name">Nombre <p-sorticon field="name" /></th>
+        <th pSortableColumn="phone">Teléfono <p-sorticon field="phone" /></th>
+        <th pSortableColumn="email">Correo <p-sorticon field="email" /></th>
+        <th pSortableColumn="status">Estado <p-sorticon field="status" /></th>
+        <th class="text-center">Acciones</th>
+      </tr>
+    </ng-template>
+
+    <ng-template #body let-client>
+      <tr>
+        <td class="font-semibold text-lime-300">{{ client.id }}</td>
+        <td>{{ client.documentType }}</td>
+        <td>{{ client.documentNumber }}</td>
+        <td class="font-semibold">{{ client.name }}</td>
+        <td>{{ client.phone }}</td>
+        <td>{{ client.email }}</td>
+        <td>
+          <span
+            class="inline-flex rounded-full px-3 py-1 text-xs font-bold"
+            [ngClass]="client.status ? 'bg-lime-300/10 text-lime-300' : 'bg-red-400/10 text-red-400'"
+          >
+            {{ client.status ? 'Activo' : 'Inactivo' }}
+          </span>
+        </td>
+        <td>
+          <div class="flex justify-center gap-2">
+            <p-button
+              icon="pi pi-pencil"
+              [routerLink]="['/clients/edit', client.id]"
+              [rounded]="true"
+              [text]="true"
+              severity="warn"
+              pTooltip="Editar cliente"
+              tooltipPosition="top"
+            />
+            <p-button
+              icon="pi pi-trash"
+              (onClick)="confirmDelete(client)"
+              [rounded]="true"
+              [text]="true"
+              severity="danger"
+              pTooltip="Eliminar cliente"
+              tooltipPosition="top"
+            />
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="8" class="py-10 text-center text-slate-400">
+          <i class="pi pi-users mb-3 block text-3xl"></i>
+          No se encontraron clientes registrados.
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+
+<p-confirmdialog />
+<p-toast />

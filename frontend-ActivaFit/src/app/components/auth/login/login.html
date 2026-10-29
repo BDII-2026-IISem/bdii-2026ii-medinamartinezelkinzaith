@@ -1,0 +1,31 @@
+<div class="max-w-md mx-auto p-6">
+  <div class="bg-white rounded-lg shadow-lg p-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Iniciar sesión</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
+      <div class="flex flex-col mb-4">
+        <label class="mb-2 font-semibold text-gray-700">Usuario o correo</label>
+        <input pInputText formControlName="identifier" class="w-full" />
+      </div>
+      <div class="flex flex-col mb-4">
+        <label class="mb-2 font-semibold text-gray-700">Contraseña</label>
+        <input pInputText type="password" formControlName="password" class="w-full" autocomplete="current-password" />
+      </div>
+
+      @if (error()) {
+        <small class="text-red-500 block mb-4">{{ error() }}</small>
+      }
+
+     <button
+  pButton
+  type="submit"
+  [disabled]="loading()"
+  [loading]="loading()"
+  class="w-full !rounded-xl !border-none !bg-lime-300 !py-3 !font-bold !text-slate-950 !shadow-lg !shadow-lime-300/10 transition-all duration-200 hover:!bg-lime-200 hover:!shadow-lime-300/20 active:scale-[0.98] disabled:!cursor-not-allowed disabled:!opacity-60"
+>
+  <i class="pi pi-sign-in mr-2"></i>
+  <span>{{ loading() ? 'Ingresando...' : 'Entrar' }}</span>
+</button>
+    </form>
+  </div>
+</div>

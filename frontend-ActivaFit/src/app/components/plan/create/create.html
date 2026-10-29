@@ -1,0 +1,31 @@
+<div class="max-w-4xl mx-auto p-6">
+  <div class="bg-white rounded-lg shadow-lg p-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Crear Nuevo Plan</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" autocomplete="off">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Nombre *</label>
+          <input pInputText formControlName="name" class="w-full" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('name')">{{ getFieldError('name') }}</small>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Estado *</label>
+          <p-select formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value" class="w-full"></p-select>
+        </div>
+        <div class="flex flex-col md:col-span-2">
+          <label class="mb-2 font-semibold text-gray-700">Descripción</label>
+          <input pInputText formControlName="description" class="w-full" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('description')">{{ getFieldError('description') }}</small>
+        </div>
+      </div>
+
+      <div class="flex justify-center mt-8 gap-4">
+        <p-button type="submit" label="Guardar" icon="pi pi-save" [loading]="loading" [disabled]="loading"></p-button>
+        <p-button type="button" severity="secondary" label="Cancelar" icon="pi pi-times" (onClick)="cancelar()" [disabled]="loading"></p-button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<p-toast></p-toast>

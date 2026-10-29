@@ -1,0 +1,25 @@
+<main class="min-h-screen flex flex-col border-4 border-red-500">
+  <!-- HEADER -->
+  <header class="h-16 bg-white border-2 border-blue-500 flex items-center justify-center font-bold text-blue-600">
+    <app-header></app-header>
+  </header>
+
+  <!-- CONTENEDOR CENTRAL (ASIDE + CONTENIDO) -->
+  <div class="flex flex-1">
+    <!-- ASIDE -->
+    <aside class="w-64 bg-white border-2 border-blue-500 flex items-start justify-start font-bold text-blue-400">
+      <app-aside></app-aside>
+    </aside>
+
+    <!-- CONTENIDO -->
+    <section class="flex-1 bg-white border-2 border-blue-500 flex items-center justify-center font-bold text-blue-600">
+      <router-outlet />
+    </section>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="h-16 bg-white border-2 border-blue-500 flex items-center justify-center font-bold text-blue-600 mt-auto">
+    <app-footer></app-footer>
+  </footer>
+</main>
+

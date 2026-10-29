@@ -1,0 +1,45 @@
+<div class="max-w-4xl mx-auto p-6">
+  <div class="bg-white rounded-lg shadow-lg p-8">
+    <h2 class="text-2xl font-bold mb-6 text-gray-800">Crear Nuevo Cliente</h2>
+
+    <form [formGroup]="form" (ngSubmit)="submit()">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Tipo de documento *</label>
+          <p-select formControlName="documentType" [options]="documentTypeOptions" optionLabel="label" optionValue="value" class="w-full"></p-select>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Número de documento *</label>
+          <input pInputText formControlName="documentNumber" class="w-full" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('documentNumber')">{{ getFieldError('documentNumber') }}</small>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Nombre *</label>
+          <input pInputText formControlName="name" class="w-full" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('name')">{{ getFieldError('name') }}</small>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Teléfono</label>
+          <input pInputText formControlName="phone" class="w-full" placeholder="3001234567" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('phone')">{{ getFieldError('phone') }}</small>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Email *</label>
+          <input pInputText type="email" formControlName="email" class="w-full" />
+          <small class="text-red-500 mt-1" *ngIf="getFieldError('email')">{{ getFieldError('email') }}</small>
+        </div>
+        <div class="flex flex-col">
+          <label class="mb-2 font-semibold text-gray-700">Estado *</label>
+          <p-select formControlName="status" [options]="statusOptions" optionLabel="label" optionValue="value" class="w-full"></p-select>
+        </div>
+      </div>
+
+      <div class="flex justify-center mt-8 gap-4">
+        <p-button type="submit" label="Guardar" icon="pi pi-save" [loading]="loading" [disabled]="loading"></p-button>
+        <p-button type="button" severity="secondary" label="Cancelar" icon="pi pi-times" (onClick)="cancelar()" [disabled]="loading"></p-button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<p-toast></p-toast>
