@@ -1,0 +1,87 @@
+<a routerLink="/membresias" class="mb-3 inline-block text-sm text-blue-700 hover:underline">
+  ← Volver a membresías
+</a>
+
+<app-page-header
+  [title]="'Membresía #' + id"
+  subtitle="Cliente, plan, vigencia y pagos tal como los guardó el servidor."
+>
+  @if (membership() && !isVoided()) {
+    <ng-container *appHasPermission="'DELETE /api/memberships/:id'"><button pButton type="button" severity="danger" (click)="voidMembership()">
+      <i pButtonIcon class="pi pi-ban"></i><span pButtonLabel>Anular membresía</span>
+    </button></ng-container>
+  }
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+@if (loading()) {
+  <p class="text-sm text-slate-500">Cargando…</p>
+}
+
+@if (membership(); as m) {
+  <p-card class="block">
+    <dl class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Cliente</dt>
+        <dd class="font-medium text-slate-800">{{ m.clientName ?? 'Cliente #' + m.client }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Plan</dt>
+        <dd class="font-medium text-slate-800">{{ m.planName ?? 'Plan #' + m.plan }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Vigencia</dt>
+        <dd class="text-slate-800">{{ m.startDate }} → {{ m.endDate }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Estado</dt>
+        <dd><app-status-tag [status]="m.status" /></dd>
+      </div>
+    </dl>
+    <p class="mt-4 text-right text-sm text-slate-600">
+      Total pagado (pagos activos):
+      <strong>{{ totalPaid() | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong>
+    </p>
+  </p-card>
+
+  <div class="mt-4">
+    <p-table [value]="m.payments" dataKey="id" tableStyleClass="min-w-2xl">
+      <ng-template #header>
+        <tr>
+          <th>Pago</th>
+          <th>Método</th>
+          <th>Fecha</th>
+          <th class="text-right">Monto</th>
+          <th>Estado</th>
+        </tr>
+      </ng-template>
+
+      <ng-template #body let-payment>
+        <tr>
+          <td class="text-sm text-slate-500">#{{ payment.id }}</td>
+          <td class="capitalize text-slate-700">{{ payment.method }}</td>
+          <td class="text-sm text-slate-600">{{ payment.paymentDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+          <td class="text-right text-slate-800">
+            {{ payment.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}
+          </td>
+          <td><app-status-tag [status]="payment.status" /></td>
+        </tr>
+      </ng-template>
+
+      <ng-template #emptymessage>
+        <tr>
+          <td colspan="5">
+            <app-empty-state
+              icon="pi pi-credit-card"
+              title="Sin pagos"
+              message="Esta membresía no tiene pagos registrados."
+            />
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+}

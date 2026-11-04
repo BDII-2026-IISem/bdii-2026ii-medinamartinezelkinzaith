@@ -1,0 +1,105 @@
+<app-page-header
+  title="Concesiones"
+  subtitle="Cada fila es un permiso: qué operación puede ejecutar un rol."
+>
+  <p-tag [value]="rows().length + ' concesiones'" severity="info" [rounded]="true" />
+  <button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Conceder permiso</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-4xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar concesiones"
+      placeholder="Buscar por rol, verbo o ruta…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Método</th>
+      <th>Ruta</th>
+      <th>Rol</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-row>
+    <tr>
+      <td>
+        <p-tag
+          [value]="resource(row.resourceId)?.method ?? '—'"
+          [severity]="methodSeverity(resource(row.resourceId)?.method)"
+          [rounded]="true"
+        />
+      </td>
+      <td><code class="text-xs">{{ resource(row.resourceId)?.route ?? '#' + row.resourceId }}</code></td>
+      <td class="text-sm font-medium text-slate-700">{{ roleLabel(row) }}</td>
+      <td><app-status-tag [status]="row.status" /></td>
+      <td class="text-right">
+        @if (row.status === 'active') {
+          <button pButton type="button" text rounded severity="danger" aria-label="Retirar permiso" pTooltip="Retirar" (click)="retire(row)"><i pButtonIcon class="pi pi-ban"></i></button>
+        } @else {
+          <button pButton type="button" text rounded severity="secondary" aria-label="Reactivar permiso" pTooltip="Reactivar" (click)="reactivate(row)"><i pButtonIcon class="pi pi-replay"></i></button>
+        }
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        <app-empty-state icon="pi pi-key" title="Sin concesiones" message="Crea la primera con «Conceder permiso»." />
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  header="Conceder permiso"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-lg mx-4"
+>
+  <form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+    <div class="flex flex-col gap-2">
+      <label for="g-role">Rol <span class="text-red-500">*</span></label>
+      <p-select inputId="g-role" formControlName="roleId" [options]="roleCatalog()" optionLabel="name" optionValue="id" placeholder="Selecciona un rol" [filter]="true" [fluid]="true" appendTo="body" />
+      @if (form.controls.roleId.touched && form.controls.roleId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un rol.</p-message>
+      }
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="g-resource">Recurso <span class="text-red-500">*</span></label>
+      <p-select inputId="g-resource" formControlName="resourceId" [options]="resourceOptions()" optionLabel="label" optionValue="id" placeholder="Selecciona una operación" [filter]="true" [fluid]="true" appendTo="body" />
+      @if (form.controls.resourceId.touched && form.controls.resourceId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un recurso.</p-message>
+      }
+    </div>
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <button pButton type="button" severity="secondary" outlined (click)="dialogVisible.set(false)"><span pButtonLabel>Cancelar</span></button>
+      <button pButton type="submit" [loading]="saving()"><span pButtonLabel>Conceder</span></button>
+    </div>
+  </form>
+</p-dialog>

@@ -139,3 +139,13 @@ class ResourceRoleSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "resource_name", "role_name", "created_at", "updated_at"]
+
+class PermissionRowSerializer(serializers.Serializer):
+    method = serializers.CharField()
+    path = serializers.CharField()
+    role_id = serializers.IntegerField()
+    role_name = serializers.CharField()
+
+
+class EffectivePermissionsSerializer(serializers.Serializer):
+    permissions = PermissionRowSerializer(many=True)

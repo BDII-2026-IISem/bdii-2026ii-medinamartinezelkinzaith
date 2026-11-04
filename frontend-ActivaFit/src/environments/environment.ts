@@ -1,3 +1,6 @@
 export const environment = {
+  production: true,
+  appName: 'ActivaFit',
+  apiUrl: 'http://localhost:8000/api',
   primeUiLicense: 'eyJpZCI6Ijg0NmViMDczLWU4NGEtNDNmNi1hMDM2LTM5Y2UyODY3MDFiYyIsInByb2R1Y3QiOiJwcmltZXVpIiwidGllciI6ImNvbW11bml0eSIsInR5cGUiOiJkZXYiLCJpYXQiOjE3OTI2ODc3NjQsImV4cCI6MTgyNDIyMzc2NH0.T3P9kwplu-BbfDnHSJqGjo1eDx1TLlP0y08bQ021GJmlgjDrH__NKnxq-Af6G09G_IyJpkZCGZ19C5Q54c_SDw',
 };

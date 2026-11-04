@@ -1,0 +1,126 @@
+<app-page-header
+  title="Medidas"
+  subtitle="Peso, altura, grasa corporal e IMC de cada cliente. Eliminar borra la fila."
+>
+  <p-tag [value]="rows().length + ' medidas'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/measurements'"><button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nueva medida</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-4xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar medidas"
+      placeholder="Buscar por cliente o entrenador…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Fecha</th>
+      <th>Cliente</th>
+      <th>Entrenador</th>
+      <th class="text-right">Peso</th>
+      <th class="text-right">Altura</th>
+      <th class="text-right">Grasa</th>
+      <th class="text-right">IMC</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-measurement>
+    <tr>
+      <td class="text-sm text-slate-600">
+        {{ measurement.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+        <p class="text-xs text-slate-400">#{{ measurement.id }}</p>
+      </td>
+      <td class="text-sm text-slate-700">{{ clientLabel(measurement) }}</td>
+      <td><p-tag [value]="trainerLabel(measurement)" severity="info" [rounded]="true" /></td>
+      <td class="text-right text-sm text-slate-700">{{ measurement.weight }} kg</td>
+      <td class="text-right text-sm text-slate-700">{{ measurement.height }} cm</td>
+      <td class="text-right text-sm text-slate-700">
+        {{ measurement.bodyFat ? measurement.bodyFat + ' %' : '—' }}
+      </td>
+      <td class="text-right text-sm text-slate-700">{{ measurement.bmi || '—' }}</td>
+      <td class="text-right">
+        <ng-container *appHasPermission="'PATCH /api/measurements/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          aria-label="Editar medida"
+          pTooltip="Editar"
+          (click)="openEdit(measurement)"
+        ><i pButtonIcon class="pi pi-pencil"></i></button></ng-container>
+        <ng-container *appHasPermission="'DELETE /api/measurements/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          aria-label="Eliminar medida"
+          pTooltip="Eliminar"
+          (click)="remove(measurement)"
+        ><i pButtonIcon class="pi pi-trash"></i></button></ng-container>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="8">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna medida coincide. Borra el filtro para ver todas."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-chart-line"
+            title="Sin medidas"
+            message="Registra la primera con «Nueva medida»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar medida' : 'Nueva medida'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-3xl mx-4"
+>
+  <app-measurement-form
+    [measurement]="editing()"
+    [clients]="clients()"
+    [trainers]="trainers()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

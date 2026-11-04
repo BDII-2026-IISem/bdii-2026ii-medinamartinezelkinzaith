@@ -1,0 +1,122 @@
+<app-page-header
+  title="Ejercicios de rutina"
+  subtitle="Cada línea asigna un ejercicio a una rutina, con sus series, repeticiones, peso y descanso."
+>
+  <p-tag [value]="rows().length + ' activos'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/routine-exercises'"><button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nuevo ejercicio de rutina</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-4xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar ejercicios de rutina"
+      placeholder="Buscar por ejercicio, grupo muscular o rutina…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Rutina</th>
+      <th pSortableColumn="name">Ejercicio <p-sort-icon field="name" /></th>
+      <th>Series × reps</th>
+      <th class="text-right">Peso</th>
+      <th class="text-right">Descanso</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-line>
+    <tr>
+      <td class="text-sm text-slate-700">{{ routineLabel(line) }}</td>
+      <td>
+        <p class="font-medium text-slate-800">{{ line.name }}</p>
+        <p-tag [value]="line.muscleGroup" severity="info" [rounded]="true" />
+      </td>
+      <td class="text-sm text-slate-700">{{ line.sets }} × {{ line.repetitions }}</td>
+      <td class="text-right text-sm text-slate-700">{{ line.weight }} kg</td>
+      <td class="text-right text-sm text-slate-700">{{ line.restSeconds }} s</td>
+      <td><app-status-tag [status]="line.status" /></td>
+      <td class="text-right">
+        <ng-container *appHasPermission="'PATCH /api/routine-exercises/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          aria-label="Editar ejercicio de rutina"
+          pTooltip="Editar"
+          (click)="openEdit(line)"
+        ><i pButtonIcon class="pi pi-pencil"></i></button></ng-container>
+        <ng-container *appHasPermission="'DELETE /api/routine-exercises/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          aria-label="Desactivar ejercicio de rutina"
+          pTooltip="Desactivar"
+          (click)="deactivate(line)"
+        ><i pButtonIcon class="pi pi-trash"></i></button></ng-container>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="7">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna línea coincide. Borra el filtro para ver todas."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-sliders-h"
+            title="Sin ejercicios de rutina"
+            message="Crea el primero con «Nuevo ejercicio de rutina»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar ejercicio de rutina' : 'Nuevo ejercicio de rutina'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-3xl mx-4"
+>
+  <app-routine-exercise-form
+    [line]="editing()"
+    [routines]="routines()"
+    [exercises]="exercises()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

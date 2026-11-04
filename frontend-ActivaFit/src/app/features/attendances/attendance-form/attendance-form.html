@@ -1,0 +1,60 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="flex flex-col gap-2">
+    <label for="attendance-membership">Membresía <span class="text-red-500">*</span></label>
+    <p-select
+      inputId="attendance-membership"
+      formControlName="membershipId"
+      [options]="options()"
+      optionLabel="label"
+      optionValue="id"
+      placeholder="Selecciona una membresía activa"
+      [filter]="true"
+      filterBy="label"
+      appendTo="body"
+      styleClass="w-full"
+    />
+    @if (form.controls.membershipId.touched && form.controls.membershipId.invalid) {
+      <p-message severity="error" size="small" variant="simple">Elige una membresía.</p-message>
+    }
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="attendance-type">Tipo <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="attendance-type"
+        formControlName="type"
+        [options]="types"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Selecciona el tipo"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.type.touched && form.controls.type.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige el tipo.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="attendance-date">Fecha y hora</label>
+      <input
+        id="attendance-date"
+        type="datetime-local"
+        pInputText
+        formControlName="attendanceDate"
+        class="w-full"
+      />
+      <p class="text-xs text-slate-400">Si la dejas vacía, el servidor usa la hora actual.</p>
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

@@ -1,0 +1,44 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="flex flex-col gap-2">
+    <label for="plan-name">Nombre <span class="text-red-500">*</span></label>
+    <input
+      id="plan-name"
+      pInputText
+      formControlName="name"
+      class="w-full"
+      placeholder="Plan mensual"
+      autocomplete="off"
+    />
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        El nombre es obligatorio y debe tener entre 2 y 100 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="plan-description">Descripción</label>
+    <textarea
+      id="plan-description"
+      pTextarea
+      formControlName="description"
+      rows="3"
+      class="w-full"
+      placeholder="Acceso mensual a todas las salas"
+    ></textarea>
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La descripción admite hasta 255 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

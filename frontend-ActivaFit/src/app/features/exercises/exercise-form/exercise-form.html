@@ -1,0 +1,63 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="exercise-name">Nombre <span class="text-red-500">*</span></label>
+      <input
+        id="exercise-name"
+        pInputText
+        formControlName="name"
+        class="w-full"
+        placeholder="Sentadilla"
+        autocomplete="off"
+      />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El nombre es obligatorio y debe tener entre 2 y 120 caracteres.
+        </p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="exercise-muscle">Grupo muscular <span class="text-red-500">*</span></label>
+      <input
+        id="exercise-muscle"
+        pInputText
+        formControlName="muscleGroup"
+        class="w-full"
+        placeholder="Piernas"
+        autocomplete="off"
+      />
+      @if (form.controls.muscleGroup.touched && form.controls.muscleGroup.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El grupo muscular es obligatorio, hasta 50 caracteres.
+        </p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="exercise-description">Descripción</label>
+    <textarea
+      id="exercise-description"
+      pTextarea
+      formControlName="description"
+      rows="3"
+      class="w-full"
+      placeholder="Cómo se ejecuta el ejercicio"
+    ></textarea>
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La descripción admite hasta 255 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

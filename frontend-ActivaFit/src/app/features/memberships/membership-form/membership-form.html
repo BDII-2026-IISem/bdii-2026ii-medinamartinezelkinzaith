@@ -1,0 +1,142 @@
+<div class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="membership-client">Cliente <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="membership-client"
+        [options]="clients()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un cliente"
+        [filter]="true"
+        filterBy="name,documentNumber"
+        styleClass="w-full"
+        [ngModel]="clientId()"
+        (ngModelChange)="clientId.set($event)"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="membership-plan">Plan <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="membership-plan"
+        [options]="plans()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un plan"
+        styleClass="w-full"
+        [ngModel]="planId()"
+        (ngModelChange)="planId.set($event)"
+      />
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="membership-start">Inicio <span class="text-red-500">*</span></label>
+      <input
+        id="membership-start"
+        type="date"
+        pInputText
+        class="w-full"
+        [value]="startDate()"
+        (input)="startDate.set($any($event.target).value)"
+      />
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="membership-end">Fin <span class="text-red-500">*</span></label>
+      <input
+        id="membership-end"
+        type="date"
+        pInputText
+        class="w-full"
+        [value]="endDate()"
+        (input)="endDate.set($any($event.target).value)"
+      />
+    </div>
+  </div>
+
+  <div class="rounded border border-slate-200 p-4">
+    <p class="mb-3 font-medium text-slate-700">Pagos</p>
+
+    <div class="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+      <div class="flex flex-col gap-2">
+        <label for="payment-method">Método</label>
+        <p-select
+          inputId="payment-method"
+          [options]="methods"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Método"
+          styleClass="w-full"
+          [ngModel]="method()"
+          (ngModelChange)="method.set($event)"
+        />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label for="payment-amount">Monto</label>
+        <input
+          id="payment-amount"
+          type="number"
+          min="0"
+          step="0.01"
+          pInputText
+          class="w-full"
+          [value]="amount() ?? ''"
+          (input)="amount.set($any($event.target).value === '' ? null : +$any($event.target).value)"
+        />
+      </div>
+
+      <button pButton type="button" severity="secondary" outlined (click)="addPayment()">
+        <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Agregar pago</span>
+      </button>
+    </div>
+
+    @if (payments().length === 0) {
+      <p class="mt-3 text-sm text-slate-500">Aún no hay pagos. Agrega al menos uno.</p>
+    } @else {
+      <ul class="mt-3 divide-y divide-slate-100">
+        @for (payment of payments(); track $index) {
+          <li class="flex items-center justify-between gap-3 py-2 text-sm">
+            <span class="capitalize text-slate-700">{{ payment.method }}</span>
+            <span class="text-slate-800">
+              {{ payment.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}
+            </span>
+            <button
+              pButton
+              type="button"
+              text
+              rounded
+              severity="danger"
+              aria-label="Quitar pago"
+              (click)="removePayment($index)"
+            ><i pButtonIcon class="pi pi-times"></i></button>
+          </li>
+        }
+      </ul>
+    }
+
+    <p class="mt-3 text-right text-sm text-slate-600">
+      Total pagado (vista previa):
+      <strong>{{ total() | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}</strong>
+    </p>
+  </div>
+
+  @if (localError()) {
+    <p-message severity="error" size="small" variant="simple">{{ localError() }}</p-message>
+  }
+  @if (error()) {
+    <p-message severity="error" styleClass="w-full">{{ error() }}</p-message>
+  }
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="button" [loading]="saving()" (click)="submit()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Registrar membresía</span>
+    </button>
+  </div>
+</div>

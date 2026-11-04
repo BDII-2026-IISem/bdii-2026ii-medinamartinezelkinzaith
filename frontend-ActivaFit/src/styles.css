@@ -1,7 +1,6 @@
-/* Tailwind 4 (lo configuró `ng new --style=tailwind`) */
-@import 'tailwindcss';
 @layer theme, base, primeng, utilities;
-/* Iconos usados por PrimeNG (pi pi-*) */
+
+@import 'tailwindcss';
 @import 'primeicons/primeicons.css';
 
 :root {

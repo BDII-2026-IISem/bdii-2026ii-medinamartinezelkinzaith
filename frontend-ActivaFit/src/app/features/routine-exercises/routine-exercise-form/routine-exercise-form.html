@@ -1,0 +1,153 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="line-routine">Rutina <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="line-routine"
+        formControlName="routineId"
+        [options]="routines()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona una rutina"
+        [filter]="true"
+        filterBy="name"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.routineId.touched && form.controls.routineId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige una rutina.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="line-exercise">Ejercicio <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="line-exercise"
+        formControlName="exerciseId"
+        [options]="exercises()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un ejercicio"
+        [filter]="true"
+        filterBy="name,muscleGroup"
+        appendTo="body"
+        styleClass="w-full"
+        (onChange)="onExerciseChange($event.value)"
+      />
+      @if (form.controls.exerciseId.touched && form.controls.exerciseId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un ejercicio.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-4">
+    <div class="flex flex-col gap-2">
+      <label for="line-sets">Series <span class="text-red-500">*</span></label>
+      <input id="line-sets" type="number" min="1" step="1" pInputText formControlName="sets" class="w-full" />
+      @if (form.controls.sets.touched && form.controls.sets.invalid) {
+        <p-message severity="error" size="small" variant="simple">Entero, mínimo 1.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="line-reps">Repeticiones <span class="text-red-500">*</span></label>
+      <input
+        id="line-reps"
+        type="number"
+        min="1"
+        step="1"
+        pInputText
+        formControlName="repetitions"
+        class="w-full"
+      />
+      @if (form.controls.repetitions.touched && form.controls.repetitions.invalid) {
+        <p-message severity="error" size="small" variant="simple">Entero, mínimo 1.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="line-weight">Peso (kg)</label>
+      <input
+        id="line-weight"
+        type="number"
+        min="0"
+        step="0.01"
+        pInputText
+        formControlName="weight"
+        class="w-full"
+      />
+      @if (form.controls.weight.touched && form.controls.weight.invalid) {
+        <p-message severity="error" size="small" variant="simple">No puede ser negativo.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="line-rest">Descanso (s)</label>
+      <input
+        id="line-rest"
+        type="number"
+        min="0"
+        step="1"
+        pInputText
+        formControlName="restSeconds"
+        class="w-full"
+      />
+      @if (form.controls.restSeconds.touched && form.controls.restSeconds.invalid) {
+        <p-message severity="error" size="small" variant="simple">Entero, desde 0.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="line-name">Nombre <span class="text-red-500">*</span></label>
+      <input id="line-name" pInputText formControlName="name" class="w-full" autocomplete="off" />
+      @if (form.controls.name.touched && form.controls.name.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El nombre es obligatorio, hasta 120 caracteres.
+        </p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="line-muscle">Grupo muscular <span class="text-red-500">*</span></label>
+      <input
+        id="line-muscle"
+        pInputText
+        formControlName="muscleGroup"
+        class="w-full"
+        autocomplete="off"
+      />
+      @if (form.controls.muscleGroup.touched && form.controls.muscleGroup.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El grupo muscular es obligatorio, hasta 50 caracteres.
+        </p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="line-description">Descripción</label>
+    <textarea
+      id="line-description"
+      pTextarea
+      formControlName="description"
+      rows="2"
+      class="w-full"
+    ></textarea>
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La descripción admite hasta 255 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

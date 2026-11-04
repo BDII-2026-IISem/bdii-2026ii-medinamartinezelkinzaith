@@ -1,0 +1,121 @@
+<app-page-header
+  title="Asistencias"
+  subtitle="Entradas y salidas de cada membresía. Eliminar borra la fila."
+>
+  <p-tag [value]="rows().length + ' asistencias'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/attendances'"><button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nueva asistencia</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-2xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar asistencias"
+      placeholder="Buscar por cliente, tipo o número…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Fecha</th>
+      <th>Membresía</th>
+      <th>Tipo</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-attendance>
+    <tr>
+      <td class="text-sm text-slate-700">
+        {{ attendance.attendanceDate | date: 'dd/MM/yyyy HH:mm' }}
+        <p class="text-xs text-slate-400">#{{ attendance.id }}</p>
+      </td>
+      <td class="text-sm text-slate-700">{{ membershipLabel(attendance) }}</td>
+      <td>
+        <p-tag
+          [value]="attendance.type"
+          [severity]="attendance.type === 'entrada' ? 'success' : 'secondary'"
+          [rounded]="true"
+        />
+      </td>
+      <td class="text-right">
+        <ng-container *appHasPermission="'PATCH /api/attendances/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          aria-label="Editar asistencia"
+          pTooltip="Editar"
+          (click)="openEdit(attendance)"
+        ><i pButtonIcon class="pi pi-pencil"></i></button></ng-container>
+        <ng-container *appHasPermission="'DELETE /api/attendances/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          aria-label="Eliminar asistencia"
+          pTooltip="Eliminar"
+          (click)="remove(attendance)"
+        ><i pButtonIcon class="pi pi-trash"></i></button></ng-container>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="4">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna asistencia coincide. Borra el filtro para ver todas."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-calendar"
+            title="Sin asistencias"
+            message="Registra la primera con «Nueva asistencia»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar asistencia' : 'Nueva asistencia'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-2xl mx-4"
+>
+  <app-attendance-form
+    [attendance]="editing()"
+    [memberships]="activeMemberships()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

@@ -1,0 +1,50 @@
+<app-page-header title="Mi sesión" subtitle="Usuario, roles y permisos que el backend reconoció.">
+  <button pButton type="button" severity="secondary" outlined [loading]="refreshing()" (click)="refresh()">
+    <i pButtonIcon class="pi pi-refresh"></i><span pButtonLabel>Refrescar desde el backend</span>
+  </button>
+  <button pButton type="button" severity="danger" outlined (click)="logout()">
+    <i pButtonIcon class="pi pi-sign-out"></i><span pButtonLabel>Salir</span>
+  </button>
+</app-page-header>
+
+<div class="grid gap-4 lg:grid-cols-2">
+  <p-card header="Usuario" class="block">
+    <dl class="grid gap-3 text-sm">
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Usuario</dt>
+        <dd class="font-medium text-slate-800">{{ session.user()?.username }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Correo</dt>
+        <dd class="text-slate-800">{{ session.user()?.email }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-slate-400">Nombre</dt>
+        <dd class="text-slate-800">
+          {{ (session.user()?.firstName + ' ' + session.user()?.lastName).trim() || '—' }}
+        </dd>
+      </div>
+    </dl>
+  </p-card>
+
+  <p-card header="Roles y permisos" class="block">
+    <p class="m-0 text-sm text-slate-500">
+      {{ session.user()?.username }} · {{ session.permissionCount() }} permisos
+    </p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      @for (role of session.roles(); track role) {
+        <p-tag [value]="role" severity="info" [rounded]="true" />
+      } @empty {
+        <span class="text-sm text-slate-400">Sin rol: este usuario no tiene permisos concedidos.</span>
+      }
+    </div>
+    <ul class="mt-4 max-h-64 divide-y divide-slate-100 overflow-y-auto text-sm">
+      @for (permission of session.permissions(); track permission.method + permission.path) {
+        <li class="flex gap-3 py-1.5">
+          <span class="w-16 font-mono text-xs text-slate-500">{{ permission.method }}</span>
+          <span class="text-slate-700">{{ permission.path }}</span>
+        </li>
+      }
+    </ul>
+  </p-card>
+</div>

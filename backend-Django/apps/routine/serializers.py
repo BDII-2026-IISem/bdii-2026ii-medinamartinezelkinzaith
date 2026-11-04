@@ -68,6 +68,15 @@ class RoutineExerciseSerializer(serializers.ModelSerializer):
         source="exercise",
         queryset=Exercise.objects.all(),
     )
+    name = serializers.CharField(source="exercise.name", read_only=True)
+    description = serializers.CharField(
+        source="exercise.description",
+        read_only=True,
+    )
+    muscle_group = serializers.CharField(
+        source="exercise.muscle_group",
+        read_only=True,
+    )
 
     class Meta:
         model = RoutineExercise

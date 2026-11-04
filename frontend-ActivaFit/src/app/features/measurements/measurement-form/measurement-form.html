@@ -1,0 +1,115 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="measurement-client">Cliente <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="measurement-client"
+        formControlName="clientId"
+        [options]="clients()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un cliente"
+        [filter]="true"
+        filterBy="name,documentNumber"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.clientId.touched && form.controls.clientId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un cliente.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="measurement-trainer">Entrenador <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="measurement-trainer"
+        formControlName="trainerId"
+        [options]="trainers()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un entrenador"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.trainerId.touched && form.controls.trainerId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un entrenador.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-4">
+    <div class="flex flex-col gap-2">
+      <label for="measurement-weight">Peso (kg) <span class="text-red-500">*</span></label>
+      <input
+        id="measurement-weight"
+        type="number"
+        min="0.01"
+        step="0.01"
+        pInputText
+        formControlName="weight"
+        class="w-full"
+      />
+      @if (form.controls.weight.touched && form.controls.weight.invalid) {
+        <p-message severity="error" size="small" variant="simple">Mayor que 0.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="measurement-height">Altura (cm) <span class="text-red-500">*</span></label>
+      <input
+        id="measurement-height"
+        type="number"
+        min="0.01"
+        step="0.01"
+        pInputText
+        formControlName="height"
+        class="w-full"
+      />
+      @if (form.controls.height.touched && form.controls.height.invalid) {
+        <p-message severity="error" size="small" variant="simple">Mayor que 0.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="measurement-fat">Grasa (%)</label>
+      <input
+        id="measurement-fat"
+        type="number"
+        min="0"
+        max="100"
+        step="0.01"
+        pInputText
+        formControlName="bodyFat"
+        class="w-full"
+      />
+      @if (form.controls.bodyFat.touched && form.controls.bodyFat.invalid) {
+        <p-message severity="error" size="small" variant="simple">Entre 0 y 100.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="measurement-bmi">IMC</label>
+      <input
+        id="measurement-bmi"
+        type="number"
+        min="0"
+        step="0.01"
+        pInputText
+        formControlName="bmi"
+        class="w-full"
+      />
+      @if (form.controls.bmi.touched && form.controls.bmi.invalid) {
+        <p-message severity="error" size="small" variant="simple">No puede ser negativo.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

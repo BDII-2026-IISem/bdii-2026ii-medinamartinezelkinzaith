@@ -1,16 +1,17 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { Aside } from './components/layout/aside/aside';
-import { Footer } from './components/layout/footer/footer';
-import { Header } from './components/layout/header/header';
 
+/**
+ * Componente principal (`<app-root>`).
+ *
+ * Es solo el punto de entrada: el router elige qué componente se dibuja dentro
+ * de `<router-outlet />` según la URL.
+ */
 @Component({
+  host: { class: 'block' },
   selector: 'app-root',
-  standalone: true,
-  imports: [RouterOutlet, Header, Footer, Aside],
+  imports: [RouterOutlet],
   templateUrl: './app.html',
-  styleUrl: './app.css'
+  styleUrl: './app.css',
 })
-export class App {
-  protected readonly title = signal('frontend-ActivaFit');
-}
+export class App {}

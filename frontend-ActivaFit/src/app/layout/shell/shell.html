@@ -1,0 +1,47 @@
+<div class="flex min-h-screen flex-col bg-slate-100">
+  <app-header
+    [showSession]="true"
+    [username]="session.user()?.username ?? ''"
+    [initials]="initials()"
+    [roleLabel]="roleLabel()"
+    [userItems]="userItems()"
+    (menuRequested)="onMenuToggle()"
+  />
+
+  <div class="flex flex-1">
+    @if (!sidebarCollapsed()) {
+      <aside class="hidden w-72 shrink-0 lg:block">
+        <app-aside
+          [items]="navGroups()"
+          [showSession]="true"
+          [username]="session.user()?.username ?? ''"
+          [roleLabel]="roleLabel()"
+          [permissionCount]="session.permissionCount()"
+          (navigated)="mobileOpen.set(false)"
+          (logoutRequested)="logout()"
+        />
+      </aside>
+    }
+
+    <main id="contenido" class="min-w-0 flex-1 p-4 sm:p-6">
+      <router-outlet />
+    </main>
+  </div>
+
+  <app-footer />
+</div>
+
+<p-drawer [(visible)]="mobileOpen" header="Menú" position="left" styleClass="w-72">
+  <app-aside
+    [items]="navGroups()"
+    [showSession]="true"
+    [username]="session.user()?.username ?? ''"
+    [roleLabel]="roleLabel()"
+    [permissionCount]="session.permissionCount()"
+    (navigated)="mobileOpen.set(false)"
+    (logoutRequested)="logout()"
+  />
+</p-drawer>
+
+<p-toast />
+<p-confirmdialog />

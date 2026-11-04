@@ -35,6 +35,7 @@ def build_samples():
         ("POST", "/api/memberships/"),
         ("GET", "/api/memberships/1/"),
         ("DELETE", "/api/memberships/1/"),
+        ("GET", "/api/users/1/permissions/"),
     ]
     return samples
 

@@ -538,3 +538,54 @@ class RbacTests(APITestCase):
         self.user.status = RecordStatus.INACTIVE
         self.user.save()
         inactive = self.client.get("/api/clients/")
+
+class EffectivePermissionsTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        self.client.force_authenticate(user=self.user)
+
+    def _paths(self):
+        response = self.client.get("/api/auth/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return [(row["method"], row["path"]) for row in response.data["permissions"]]
+
+    def test_requires_identity(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get("/api/auth/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_role_has_no_permissions(self):
+        self.assertEqual(self._paths(), [])
+
+    def test_paths_use_frontend_format_and_only_active_links(self):
+        grant(self.user, "GET", "/api/clients/")
+        grant(self.user, "GET", "/api/clients/1/")
+        self.assertEqual(
+            sorted(self._paths()),
+            [("GET", "/api/clients"), ("GET", "/api/clients/:id")],
+        )
+        Resource.objects.filter(route="api/clients/").update(status=RecordStatus.INACTIVE)
+        self.assertEqual(self._paths(), [("GET", "/api/clients/:id")])
+
+class UserPermissionsTests(APITestCase):
+    def setUp(self):
+        self.admin = create_active_user(username="admin_perm", email="admin_perm@activafit.test")
+        grant(self.admin, "GET", "/api/users/1/permissions/")
+        self.target = create_active_user(username="objetivo", email="objetivo@activafit.test")
+        grant(self.target, "GET", "/api/clients/")
+        self.client.force_authenticate(user=self.admin)
+
+    def test_returns_the_permissions_of_another_user(self):
+        response = self.client.get(f"/api/users/{self.target.pk}/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        pairs = [(row["method"], row["path"]) for row in response.data["permissions"]]
+        self.assertEqual(pairs, [("GET", "/api/clients")])
+
+    def test_requires_the_grant(self):
+        self.client.force_authenticate(user=self.target)
+        response = self.client.get(f"/api/users/{self.admin.pk}/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_unknown_user_is_404(self):
+        response = self.client.get("/api/users/999999/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)

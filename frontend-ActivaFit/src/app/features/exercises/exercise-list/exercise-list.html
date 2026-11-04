@@ -1,0 +1,118 @@
+<app-page-header
+  title="Ejercicios"
+  subtitle="La baja es lógica: el ejercicio queda inactivo y sale de este listado."
+>
+  <p-tag [value]="rows().length + ' activos'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/exercises'"><button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nuevo ejercicio</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar ejercicios"
+      placeholder="Buscar por nombre, grupo muscular o descripción…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th pSortableColumn="name">Nombre <p-sort-icon field="name" /></th>
+      <th pSortableColumn="muscleGroup">
+        Grupo muscular <p-sort-icon field="muscleGroup" />
+      </th>
+      <th>Descripción</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-exercise>
+    <tr>
+      <td>
+        <p class="font-medium text-slate-800">{{ exercise.name }}</p>
+        <p class="text-xs text-slate-400">#{{ exercise.id }}</p>
+      </td>
+      <td><p-tag [value]="exercise.muscleGroup" severity="info" [rounded]="true" /></td>
+      <td class="text-sm text-slate-600">{{ exercise.description || '—' }}</td>
+      <td><app-status-tag [status]="exercise.status" /></td>
+      <td class="text-right">
+        <ng-container *appHasPermission="'PATCH /api/exercises/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          aria-label="Editar ejercicio"
+          pTooltip="Editar"
+          (click)="openEdit(exercise)"
+        ><i pButtonIcon class="pi pi-pencil"></i></button></ng-container>
+        <ng-container *appHasPermission="'DELETE /api/exercises/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          aria-label="Desactivar ejercicio"
+          pTooltip="Desactivar"
+          (click)="deactivate(exercise)"
+        ><i pButtonIcon class="pi pi-trash"></i></button></ng-container>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ningún ejercicio coincide. Borra el filtro para ver todos."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-bolt"
+            title="Sin ejercicios"
+            message="Crea el primero con «Nuevo ejercicio»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar ejercicio' : 'Nuevo ejercicio'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-2xl mx-4"
+>
+  <app-exercise-form
+    [exercise]="editing()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

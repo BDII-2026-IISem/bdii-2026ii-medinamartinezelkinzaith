@@ -1,0 +1,105 @@
+<app-page-header
+  title="Membresías"
+  subtitle="Cada membresía une a un cliente con un plan y guarda sus pagos."
+>
+  <p-tag [value]="rows().length + ' membresías'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/memberships'"><button pButton type="button" (click)="openRegister()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nueva membresía</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar membresías"
+      placeholder="Buscar por cliente, plan o número…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Membresía</th>
+      <th>Cliente</th>
+      <th>Plan</th>
+      <th>Vigencia</th>
+      <th class="text-right">Pagado</th>
+      <th>Estado</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-membership>
+    <tr>
+      <td>
+        <a
+          class="font-medium text-blue-700 hover:underline"
+          [routerLink]="['/membresias', membership.id]"
+        >
+          #{{ membership.id }}
+        </a>
+      </td>
+      <td class="text-sm text-slate-700">{{ clientLabel(membership) }}</td>
+      <td class="text-sm text-slate-700">{{ planLabel(membership) }}</td>
+      <td class="text-sm text-slate-600">{{ membership.startDate }} → {{ membership.endDate }}</td>
+      <td class="text-right text-sm text-slate-800">
+        {{ totalPaid(membership) | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}
+      </td>
+      <td><app-status-tag [status]="membership.status" /></td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="6">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ninguna membresía coincide. Borra el filtro para ver todas."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-credit-card"
+            title="Sin membresías"
+            message="Registra la primera con «Nueva membresía»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  header="Nueva membresía"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-3xl mx-4"
+>
+  <app-membership-form
+    [clients]="clients()"
+    [plans]="plans()"
+    [saving]="saving()"
+    [error]="registerError()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

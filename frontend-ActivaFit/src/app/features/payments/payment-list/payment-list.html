@@ -1,0 +1,84 @@
+<app-page-header
+  title="Pagos"
+  subtitle="Todos los pagos de todas las membresías. Cada fila enlaza a su membresía."
+>
+  <p-tag [value]="rows().length + ' pagos'" severity="info" [rounded]="true" />
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-4xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar pagos"
+      placeholder="Buscar por cliente, plan, método o número de membresía…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th>Membresía</th>
+      <th>Cliente</th>
+      <th>Plan</th>
+      <th>Método</th>
+      <th>Fecha</th>
+      <th class="text-right">Monto</th>
+      <th>Estado</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-payment>
+    <tr>
+      <td>
+        <a
+          class="font-medium text-blue-700 hover:underline"
+          [routerLink]="['/membresias', payment.membership]"
+        >
+          #{{ payment.membership }}
+        </a>
+      </td>
+      <td class="text-sm text-slate-700">{{ payment.clientName || '—' }}</td>
+      <td class="text-sm text-slate-700">{{ payment.planName || '—' }}</td>
+      <td class="capitalize text-slate-700">{{ payment.method }}</td>
+      <td class="text-sm text-slate-600">{{ payment.paymentDate | date: 'dd/MM/yyyy HH:mm' }}</td>
+      <td class="text-right text-slate-800">
+        {{ payment.amount | currency: 'COP' : 'symbol-narrow' : '1.0-2' }}
+      </td>
+      <td><app-status-tag [status]="payment.status" /></td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="7">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ningún pago coincide. Borra el filtro para ver todos."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-wallet"
+            title="Sin pagos"
+            message="Los pagos aparecen al registrar membresías."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>

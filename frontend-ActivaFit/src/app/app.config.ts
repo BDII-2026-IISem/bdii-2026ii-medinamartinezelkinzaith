@@ -1,12 +1,14 @@
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { withInterceptors } from '@angular/common/http';
+import { authInterceptor } from './core/interceptors/auth-interceptor';
+import { errorInterceptor } from './core/interceptors/error-interceptor';
 import { provideRouter,withComponentInputBinding,
   withInMemoryScrolling,} from '@angular/router';
 import { ConfirmationService, MessageService } from 'primeng/api';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
-import { authInterceptor } from './core/auth.interceptor';
 import { environment } from '../environments/environment';
 
 export const appConfig: ApplicationConfig = {
@@ -14,7 +16,6 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes ,withComponentInputBinding(),
       withInMemoryScrolling({ scrollPositionRestoration: 'top' }),),
-    provideHttpClient(withInterceptors([authInterceptor])),
     providePrimeNG({
       license: environment.primeUiLicense || undefined,
       ripple: true,
@@ -27,7 +28,7 @@ export const appConfig: ApplicationConfig = {
         },
       },
     }),
-
+    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
     MessageService,
     ConfirmationService,
   ],

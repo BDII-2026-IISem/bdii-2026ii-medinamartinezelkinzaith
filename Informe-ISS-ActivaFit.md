@@ -6552,11 +6552,11 @@ Pasar el negocio de la Fase I al tercer acceso, JWT con token más permisos por 
 
 **Requisitos**
 
--  ISS-21 superado.
+- ISS-21 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
--  Las pruebas de negocio, que en la Fase I no enviaban token, ahora crean un usuario y llaman `grant()` o `grant_crud()`.
+- Las pruebas de negocio, que en la Fase I no enviaban token, ahora crean un usuario y llaman `grant()` o `grant_crud()`.
 
 #### Construcción
 
@@ -6891,11 +6891,11 @@ Debe mostrar `HTTP/1.1 403 Forbidden`: sabe quién eres, pero no tienes ninguna 
 
 #### Criterios de aceptación
 
--  **AC-22-01:** las pruebas de clientes, planes, entrenadores, rutinas, medidas y membresías siguen en PASS con un usuario concedido.
+- **AC-22-01:** las pruebas de clientes, planes, entrenadores, rutinas, medidas y membresías siguen en PASS con un usuario concedido.
 
--  **AC-22-02:** sin concesión, clientes responde 403, y sin identidad responde 401.
+- **AC-22-02:** sin concesión, clientes responde 403, y sin identidad responde 401.
 
--  **AC-22-03:** el perfil sigue sin consultar la matriz.
+- **AC-22-03:** el perfil sigue sin consultar la matriz.
 
 #### Verificación
 
@@ -6903,11 +6903,11 @@ La suite de las seis apps de negocio y `test_missing_grant_is_403_and_missing_id
 
 #### GATE
 
--  **AC-22-01:** negocio con RBAC, 23 pruebas en OK. **PASS**.
+- **AC-22-01:** negocio con RBAC, 23 pruebas en OK. **PASS**.
 
--  **AC-22-02:** negación por defecto, 403 sin concesión y 401 sin identidad. **PASS**.
+- **AC-22-02:** negación por defecto, 403 sin concesión y 401 sin identidad. **PASS**.
 
--  **AC-22-03:** el perfil sigue en JWT con token. **PASS**.
+- **AC-22-03:** el perfil sigue en JWT con token. **PASS**.
 
 ### ISS-23 — CRUD de la matriz
 
@@ -6921,9 +6921,9 @@ Administrar la matriz de permisos y usarla para autorizar. El CRUD crea cada fil
 
 **Requisitos**
 
--  ISS-22 superado.
+- ISS-22 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -7665,23 +7665,29 @@ python manage.py runserver
 
 Y en el navegador, [`http://127.0.0.1:8000/api/schema/swagger-ui/`](http://127.0.0.1:8000/api/schema/swagger-ui/). Sigue estos pasos:
 
-1.   Abre `POST /api/auth/login/`, pulsa **Try it out**, escribe tu `username` y `password`, y pulsa **Execute**. Esta ruta es abierta, no pide token. Copia solo el valor de `access`.
+1.  Abre `POST /api/auth/login/`, pulsa **Try it out**, escribe tu `username` y `password`, y pulsa **Execute**. Esta ruta es abierta, no pide token. Copia solo el valor de `access`.
 
-    ![](images/clipboard-125481204.png)
+```         
+![](images/clipboard-125481204.png)
 
-    ![](images/clipboard-3481539800.png)
+![](images/clipboard-3481539800.png)
+```
 
-2.   Pulsa el botón **Authorize** (arriba a la derecha), pega ese valor y confirma. No escribas `Bearer`.
+2.  Pulsa el botón **Authorize** (arriba a la derecha), pega ese valor y confirma. No escribas `Bearer`.
 
-    ![](images/clipboard-2377766684.png)
+```         
+![](images/clipboard-2377766684.png)
 
-    ![](images/clipboard-431903387.png)
+![](images/clipboard-431903387.png)
+```
 
-3.   Abre `GET /api/clients/` y ejecútalo. Debe responder **200**: tu usuario ya tiene el rol `admin` con todas las rutas concedidas.
+3.  Abre `GET /api/clients/` y ejecútalo. Debe responder **200**: tu usuario ya tiene el rol `admin` con todas las rutas concedidas.
 
-    ![](images/clipboard-4294229112.png)
+```         
+![](images/clipboard-4294229112.png)
+```
 
-4.   Para ver el 403, crea otro usuario sin rol. Con tu token puesto, ejecuta `POST /api/users/` con este cuerpo:
+4.  Para ver el 403, crea otro usuario sin rol. Con tu token puesto, ejecuta `POST /api/users/` con este cuerpo:
 
 ```         
 {"username": "visita", "email": "visita@activafit.test", "password": "Vitalidad-Plan-77", "status": "active"}
@@ -7691,13 +7697,13 @@ Y en el navegador, [`http://127.0.0.1:8000/api/schema/swagger-ui/`](http://127.0
 
 ![](images/clipboard-1727710466.png)
 
-5.   Pulsa **Authorize**, cierra la sesión del token actual y vuelve a hacer login, esta vez con `visita`. Autoriza con su `access`.
+5.  Pulsa **Authorize**, cierra la sesión del token actual y vuelve a hacer login, esta vez con `visita`. Autoriza con su `access`.
 
 ![](images/clipboard-2852613721.png)
 
-5.   Ejecuta `GET /api/clients/`: debe responder **403**, porque `visita` no tiene ningún rol. Ejecuta `GET /api/auth/profile/`: debe responder **200**, porque el perfil solo pide identidad. Si cierras la sesión de Authorize del todo, `GET /api/clients/` responde **401**.
+5.  Ejecuta `GET /api/clients/`: debe responder **403**, porque `visita` no tiene ningún rol. Ejecuta `GET /api/auth/profile/`: debe responder **200**, porque el perfil solo pide identidad. Si cierras la sesión de Authorize del todo, `GET /api/clients/` responde **401**.
 
-6.   Con `curl` es lo mismo. Haz login, copia el `access` y llama al negocio (pega el tuyo en lugar de `PEGA_AQUI_ACCESS`); ahora responde 200 en lugar del 403 que viste en el ISS-22:
+6.  Con `curl` es lo mismo. Haz login, copia el `access` y llama al negocio (pega el tuyo en lugar de `PEGA_AQUI_ACCESS`); ahora responde 200 en lugar del 403 que viste en el ISS-22:
 
 ```         
 curl -i http://127.0.0.1:8000/api/clients/ -H "Authorization: Bearer PEGA_AQUI_ACCESS"
@@ -7715,13 +7721,13 @@ El usuario `visita` y todo lo que crees desde Swagger queda en tu base de datos 
 
 #### Criterios de aceptación
 
--  **AC-24-01:** `seed_rbac` termina sin error, y repetirlo no duplica filas.
+- **AC-24-01:** `seed_rbac` termina sin error, y repetirlo no duplica filas.
 
--  **AC-24-02:** las rutas guardadas usan `<int:pk>`.
+- **AC-24-02:** las rutas guardadas usan `<int:pk>`.
 
--  **AC-24-03:** `spectacular --validate` sale con código 0 e incluye el esquema Bearer.
+- **AC-24-03:** `spectacular --validate` sale con código 0 e incluye el esquema Bearer.
 
--  **AC-24-04:** el usuario sembrado entra al negocio con 200, y un usuario sin rol recibe 403.
+- **AC-24-04:** el usuario sembrado entra al negocio con 200, y un usuario sin rol recibe 403.
 
 #### Verificación
 
@@ -7729,13 +7735,13 @@ El usuario `visita` y todo lo que crees desde Swagger queda en tu base de datos 
 
 #### GATE
 
--  **AC-24-01:** el comando termina bien y es idempotente. **PASS**.
+- **AC-24-01:** el comando termina bien y es idempotente. **PASS**.
 
--  **AC-24-02:** existe `GET api/clients/<int:pk>/` en `resources`. **PASS**.
+- **AC-24-02:** existe `GET api/clients/<int:pk>/` en `resources`. **PASS**.
 
--  **AC-24-03:** `--validate` con código 0 y `bearerAuth` en el esquema. **PASS**.
+- **AC-24-03:** `--validate` con código 0 y `bearerAuth` en el esquema. **PASS**.
 
--  **AC-24-04:** el administrador sembrado recibe 200 y `visita` recibe 403. **PAS**
+- **AC-24-04:** el administrador sembrado recibe 200 y `visita` recibe 403. **PAS**
 
 ### ISS-25 — Pruebas 401 y 403
 
@@ -7749,9 +7755,9 @@ Escribir en tests la diferencia entre no tener identidad (401) y no tener permis
 
 **Requisitos**
 
--  ISS-24 superado.
+- ISS-24 superado.
 
--  Terminal con el entorno virtual `.venv` activo.
+- Terminal con el entorno virtual `.venv` activo.
 
 #### Construcción
 
@@ -7888,13 +7894,13 @@ Para verlo a mano en Swagger, después de la semilla del ISS-24, abre `GET /api/
 
 #### Criterios de aceptación
 
--  **AC-25-01:** la suite completa pasa.
+- **AC-25-01:** la suite completa pasa.
 
--  **AC-25-02:** existe una prueba cuyo resultado esperado es 401.
+- **AC-25-02:** existe una prueba cuyo resultado esperado es 401.
 
 - **AC-25-03:** existe una prueba cuyo resultado esperado es 403.
 
--  **AC-25-04:** el 403 no aparece cuando falta el token.
+- **AC-25-04:** el 403 no aparece cuando falta el token.
 
 #### Verificación
 
@@ -7902,20 +7908,20 @@ Para verlo a mano en Swagger, después de la semilla del ISS-24, abre `GET /api/
 
 #### GATE
 
--  **AC-25-01:** la suite `apps` pasa. **PASS**.
+- **AC-25-01:** la suite `apps` pasa. **PASS**.
 
--  **AC-25-02:** el test del anónimo y del token inválido esperan 401. **PASS**.
+- **AC-25-02:** el test del anónimo y del token inválido esperan 401. **PASS**.
 
--  **AC-25-03:** el test sin concesión y el de los eslabones inactivos esperan 403. **PASS**.
+- **AC-25-03:** el test sin concesión y el de los eslabones inactivos esperan 403. **PASS**.
 
--  **AC-25-04:** el anónimo recibe 401 y no 403. **PASS**.
+- **AC-25-04:** el anónimo recibe 401 y no 403. **PASS**.
 
 ### Cierre de la Fase II — Auth con RBAC
 
 Esta fase agregó identidad y autorización sobre el negocio que ya estaba cerrado en el ISS-14. Quedaron definidos tres accesos, y cada endpoint de ActivaFit usa uno solo.
 
 | Acceso | Endpoints |
-|----|----|
+|------------------------------------|------------------------------------|
 | OPEN | `POST /api/auth/login/`, `/api/auth/refresh/`, `/api/auth/logout/`, el esquema y Swagger |
 | JWT con token | `GET` y `PATCH /api/auth/profile/` |
 | JWT con token + RBAC | clientes, entrenadores, planes, ejercicios, rutinas, medidas, asistencias, membresías, y el CRUD de usuarios, roles, recursos y asignaciones |
@@ -7955,7 +7961,7 @@ En la fila del motor escribe el que usas en tu `.env`. La suite solo la corrí e
 #### GATE AUTH/RBAC
 
 | Criterio | Verificación | Resultado |
-|----|----|----|
+|------------------------|------------------------|------------------------|
 | Hash de contraseña y de refresh | pruebas de login y de la matriz | PASS |
 | OPEN, JWT con token y JWT con token + RBAC | contrato y pruebas | PASS |
 | Negación por defecto | `RbacTests` | PASS |
@@ -7965,7 +7971,204 @@ En la fila del motor escribe el que usas en tu `.env`. La suite solo la corrí e
 
 El GATE de la fase se supera en el motor donde corrió la suite.
 
-## **Conclusión** 
+### Complemento del backend — Permisos efectivos (`GET /api/auth/permissions/`)
+
+**Narrativa**
+
+Al leer los requisitos del frontend me di cuenta de que mi backend no le decía a la interfaz qué podía hacer cada usuario. El login solo entrega los tokens, y sin saber los permisos, el frontend no podría decidir qué opciones mostrar en el menú ni qué pantallas proteger. Tendría que esperar a que la API le responda 403 para enterarse. Por eso construí un endpoint que devuelve los permisos efectivos del usuario que lo consulta. Un permiso es efectivo cuando toda la cadena está activa: el usuario, la asignación de su rol, el rol, la concesión y el recurso. Como cada usuario consulta solo los suyos, el endpoint pide identidad pero no pasa por la matriz de permisos, igual que el perfil.
+
+**Objetivo**
+
+Entregar al frontend la lista de permisos efectivos del usuario autenticado, en un formato fácil de comparar con las rutas de Angular.
+
+**Requisitos**
+
+-  ISS-25 superado.
+
+-  Terminal con el entorno virtual `.venv` activo.
+
+#### Construcción
+
+**Paso 0. Activar el entorno virtual**
+
+```         
+source .venv/bin/activate which python
+```
+
+**Paso 1. Agregar los serializers**
+
+Al final de `apps/security/serializers.py` agregué estas dos clases. Definen la forma de la respuesta: una lista `permissions` con una fila por permiso. El renderer camelCase convierte `role_id` y `role_name` en `roleId` y `roleName`.
+
+``` python
+class PermissionRowSerializer(serializers.Serializer):
+    method = serializers.CharField()
+    path = serializers.CharField()
+    role_id = serializers.IntegerField()
+    role_name = serializers.CharField()
+
+
+class EffectivePermissionsSerializer(serializers.Serializer):
+    permissions = PermissionRowSerializer(many=True)
+```
+
+**Paso 2. Escribir la vista**
+
+En `apps/security/rbac_views.py` reemplacé el bloque de imports del inicio por este, que suma `re`, `extend_schema`, `Response`, `APIView` y el serializer nuevo:
+
+``` python
+import re
+
+from drf_spectacular.utils import extend_schema
+from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.common.status import RecordStatus
+from apps.common.views import CatalogViewSet
+from apps.security.models import Resource, ResourceRole, Role, RoleUser, User
+from apps.security.serializers import (
+    EffectivePermissionsSerializer,
+    ProfileSerializer,
+    ResourceRoleSerializer,
+    ResourceSerializer,
+    RoleSerializer,
+    RoleUserSerializer,
+    UserSerializer,
+)
+```
+
+Y al final del archivo agregué la función de conversión y la vista. En la base de datos las rutas están guardadas como patrones de Django (`api/clients/<int:pk>/`), pero el frontend espera el formato `/api/clients/:id`, con barra inicial, sin barra final y con `:id` en el detalle. La función hace esa traducción. La vista devuelve solo las cadenas completas y activas del usuario que llama.
+
+``` python
+ROUTE_PARAM = re.compile(r"<(?:\w+:)?(\w+)>")
+
+
+def to_frontend_path(route):
+    path = "/" + route.strip("/")
+    return ROUTE_PARAM.sub(
+        lambda match: ":id" if match.group(1) == "pk" else f":{match.group(1)}",
+        path,
+    )
+
+
+class EffectivePermissionsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(responses=EffectivePermissionsSerializer)
+    def get(self, request):
+        grants = (
+            ResourceRole.objects.filter(
+                status=RecordStatus.ACTIVE,
+                resource__status=RecordStatus.ACTIVE,
+                role__status=RecordStatus.ACTIVE,
+                role__assignments__user=request.user,
+                role__assignments__status=RecordStatus.ACTIVE,
+            )
+            .select_related("resource", "role")
+            .order_by("resource__route", "resource__method", "role__name")
+        )
+        rows = [
+            {
+                "method": grant.resource.method,
+                "path": to_frontend_path(grant.resource.route),
+                "role_id": grant.role_id,
+                "role_name": grant.role.name,
+            }
+            for grant in grants
+        ]
+        return Response(EffectivePermissionsSerializer({"permissions": rows}).data)
+```
+
+**Paso 3. Agregar la ruta**
+
+En `apps/security/urls.py` agregué `EffectivePermissionsAPIView` al import de `rbac_views`:
+
+``` {.python .py}}
+from apps.security.rbac_views import (
+    EffectivePermissionsAPIView,
+    ProfileAPIView,
+    ResourceRoleViewSet,
+    ResourceViewSet,
+    RoleUserViewSet,
+    RoleViewSet,
+    UserViewSet,
+)
+```
+
+Y debajo de la ruta del perfil, en `urlpatterns`, agregué:
+
+``` python
+    path("auth/permissions/", EffectivePermissionsAPIView.as_view(), name="auth-permissions"),
+```
+
+**Paso 4. Agregar las pruebas**
+
+Al final de `apps/security/tests.py` agregué esta clase. `grant` ya estaba importado desde el ISS-25. Comprueba que sin sesión responde 401, que un usuario sin rol recibe una lista vacía, y que las rutas salen con el formato que espera el frontend y desaparecen al apagar un eslabón.
+
+``` python
+class EffectivePermissionsTests(APITestCase):
+    def setUp(self):
+        self.user = create_active_user()
+        self.client.force_authenticate(user=self.user)
+
+    def _paths(self):
+        response = self.client.get("/api/auth/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        return [(row["method"], row["path"]) for row in response.data["permissions"]]
+
+    def test_requires_identity(self):
+        self.client.force_authenticate(user=None)
+        response = self.client.get("/api/auth/permissions/")
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_user_without_role_has_no_permissions(self):
+        self.assertEqual(self._paths(), [])
+
+    def test_paths_use_frontend_format_and_only_active_links(self):
+        grant(self.user, "GET", "/api/clients/")
+        grant(self.user, "GET", "/api/clients/1/")
+        self.assertEqual(
+            sorted(self._paths()),
+            [("GET", "/api/clients"), ("GET", "/api/clients/:id")],
+        )
+        Resource.objects.filter(route="api/clients/").update(status=RecordStatus.INACTIVE)
+        self.assertEqual(self._paths(), [("GET", "/api/clients/:id")])
+```
+
+**Paso 5. Ejecutar las pruebas y validar el esquema**
+
+```         
+python manage.py test apps.security.tests.EffectivePermissionsTests
+python manage.py test apps.security
+python manage.py spectacular --validate --file /tmp/activafit-schema.yml
+echo $?
+```
+
+La primera debe dar `Ran 3 tests` y `OK`. La segunda debe dar `Ran 29 tests` y `OK`, y el `echo $?` debe imprimir `0`.
+
+![](images/clipboard-848678490.png)
+
+#### Explicación
+
+El endpoint responde una sola pregunta: ¿qué puedo hacer yo? Solo exige identidad, porque cada usuario consulta sus propios permisos, y por eso no lo agregué a la matriz ni a la semilla `seed_rbac`. La consulta usa el mismo criterio que `HasResourceAccess`: una fila aparece únicamente si el usuario, su asignación de rol, el rol, la concesión y el recurso están activos. Si apago cualquiera de esos eslabones, la fila desaparece de la respuesta, igual que el permiso real.
+
+La conversión de rutas existe porque la base de datos y el frontend hablan formatos distintos. Django guarda `api/clients/<int:pk>/`, que es lo que necesita para autorizar. El frontend compara contra rutas escritas como `/api/clients/:id`. Hacer la traducción en el backend evita que la interfaz tenga que conocer los convertidores de Django.
+
+```         
+GET /api/auth/permissions/
+        │
+        ▼
+solo cadenas completas y activas del usuario
+        │
+        ▼
+api/clients/<int:pk>/  →  /api/clients/:id
+        │
+        ▼
+{ "permissions": [ { method, path, roleId, roleName } ] }
+```
+
+## Conclusion
 
 Al terminar todos los ISS, puedo decir que el proyecto ActivaFit quedó completo. Fui avanzando paso a paso, desde preparar el entorno hasta controlar quién puede entrar a cada parte del sistema, y comprobando en cada unidad que lo anterior funcionaba antes de seguir.
 

@@ -1,0 +1,82 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="routine-trainer">Entrenador <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="routine-trainer"
+        formControlName="trainerId"
+        [options]="trainers()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un entrenador"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.trainerId.touched && form.controls.trainerId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un entrenador.</p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="routine-client">Cliente <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="routine-client"
+        formControlName="clientId"
+        [options]="clients()"
+        optionLabel="name"
+        optionValue="id"
+        placeholder="Selecciona un cliente"
+        [filter]="true"
+        filterBy="name,documentNumber"
+        appendTo="body"
+        styleClass="w-full"
+      />
+      @if (form.controls.clientId.touched && form.controls.clientId.invalid) {
+        <p-message severity="error" size="small" variant="simple">Elige un cliente.</p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="routine-name">Nombre <span class="text-red-500">*</span></label>
+    <input
+      id="routine-name"
+      pInputText
+      formControlName="name"
+      class="w-full"
+      placeholder="Fuerza tren superior"
+      autocomplete="off"
+    />
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        El nombre es obligatorio y debe tener entre 2 y 120 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="routine-description">Descripción</label>
+    <textarea
+      id="routine-description"
+      pTextarea
+      formControlName="description"
+      rows="3"
+      class="w-full"
+      placeholder="Tres sesiones por semana"
+    ></textarea>
+    @if (form.controls.description.touched && form.controls.description.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La descripción admite hasta 255 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

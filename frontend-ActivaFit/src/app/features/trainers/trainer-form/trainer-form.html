@@ -1,0 +1,80 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="flex flex-col gap-2">
+    <label for="trainer-name">Nombre <span class="text-red-500">*</span></label>
+    <input
+      id="trainer-name"
+      pInputText
+      formControlName="name"
+      class="w-full"
+      placeholder="Carlos Ruiz"
+      autocomplete="name"
+    />
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        El nombre es obligatorio y debe tener entre 2 y 150 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="trainer-specialty">Especialidad</label>
+    <input
+      id="trainer-specialty"
+      pInputText
+      formControlName="specialty"
+      class="w-full"
+      placeholder="Fuerza y acondicionamiento"
+    />
+    @if (form.controls.specialty.touched && form.controls.specialty.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        La especialidad admite hasta 100 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="trainer-phone">Teléfono</label>
+      <input
+        id="trainer-phone"
+        pInputText
+        formControlName="phone"
+        class="w-full"
+        placeholder="300 123 4567"
+        autocomplete="tel"
+      />
+      @if (form.controls.phone.touched && form.controls.phone.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          Usa entre 7 y 30 caracteres: números, espacios, +, - y paréntesis.
+        </p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="trainer-email">Email</label>
+      <input
+        id="trainer-email"
+        type="email"
+        pInputText
+        formControlName="email"
+        class="w-full"
+        placeholder="carlos@activafit.test"
+        autocomplete="email"
+      />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El email debe tener un formato válido.
+        </p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

@@ -1,0 +1,44 @@
+<p-card header="Objeto plan" subheader="Estado local con signals">
+  <div class="space-y-4">
+    <div class="flex items-center justify-between">
+      <span class="text-lg font-semibold">{{ producto().nombre }}</span>
+      <p-tag [value]="estadoTexto()" [severity]="producto().activo ? 'success' : 'danger'" />
+    </div>
+
+    <dl class="grid grid-cols-2 gap-2 text-sm">
+      <dt class="text-slate-500">Precio</dt>
+      <dd>{{ producto().precio }}</dd>
+      <dt class="text-slate-500">Precio con IVA (19 %)</dt>
+      <dd>{{ precioFinal() }}</dd>
+    </dl>
+
+    <label class="block text-sm">
+      Nombre
+      <input
+        type="text"
+        class="mt-1 w-full rounded border border-slate-300 p-2"
+        [value]="producto().nombre"
+        (input)="cambiarNombre($event)"
+      />
+    </label>
+    <p class="text-sm text-slate-500">Vista previa: {{ producto().nombre }}</p>
+
+    @if (producto().activo) {
+      <p class="text-sm text-emerald-700">
+        Plan activo: así lo devolvería GET /api/plans/ con el filtro de estado.
+      </p>
+    } @else {
+      <p class="text-sm text-amber-700">
+        Plan inactivo: es el borrado lógico, la fila sigue en la tabla.
+      </p>
+    }
+
+    <div class="flex flex-wrap gap-2">
+      <p-button label="+1000" (onClick)="variarPrecio(1000)" />
+      <p-button label="Cambiar estado" severity="secondary" (onClick)="cambiarEstado()" />
+      <p-button label="Reiniciar" severity="contrast" [outlined]="true" (onClick)="reiniciar()" />
+    </div>
+
+    <div class="ejemplo-alcance rounded p-2 text-sm">Esta caja usa CSS encapsulado.</div>
+  </div>
+</p-card>

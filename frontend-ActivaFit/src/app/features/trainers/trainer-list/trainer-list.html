@@ -1,0 +1,125 @@
+<app-page-header
+  title="Entrenadores"
+  subtitle="La baja es lógica: el entrenador queda inactivo y sale de este listado."
+>
+  <p-tag [value]="rows().length + ' activos'" severity="info" [rounded]="true" />
+  <ng-container *appHasPermission="'POST /api/trainers'"><button pButton type="button" (click)="openCreate()">
+    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nuevo entrenador</span>
+  </button></ng-container>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<p-table
+  [value]="visibleRows()"
+  [loading]="loading()"
+  dataKey="id"
+  tableStyleClass="min-w-3xl"
+  [paginator]="visibleRows().length > 10"
+  [rows]="10"
+>
+  <ng-template #caption>
+    <input
+      pInputText
+      type="search"
+      class="w-full"
+      aria-label="Buscar entrenadores"
+      placeholder="Buscar por nombre, especialidad, email o teléfono…"
+      [value]="filter()"
+      (input)="filter.set($any($event.target).value)"
+    />
+  </ng-template>
+
+  <ng-template #header>
+    <tr>
+      <th pSortableColumn="name">Nombre <p-sort-icon field="name" /></th>
+      <th>Especialidad</th>
+      <th>Contacto</th>
+      <th>Estado</th>
+      <th class="w-32 text-right">Acciones</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-trainer>
+    <tr>
+      <td>
+        <p class="font-medium text-slate-800">{{ trainer.name }}</p>
+        <p class="text-xs text-slate-400">#{{ trainer.id }}</p>
+      </td>
+      <td>
+        @if (trainer.specialty) {
+          <p-tag [value]="trainer.specialty" severity="info" [rounded]="true" />
+        } @else {
+          <span class="text-sm text-slate-400">—</span>
+        }
+      </td>
+      <td>
+        <p class="text-sm text-slate-700">{{ trainer.email || '—' }}</p>
+        <p class="text-xs text-slate-400">{{ trainer.phone || 'Sin teléfono' }}</p>
+      </td>
+      <td><app-status-tag [status]="trainer.status" /></td>
+      <td class="text-right">
+        <ng-container *appHasPermission="'PATCH /api/trainers/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="secondary"
+          aria-label="Editar entrenador"
+          pTooltip="Editar"
+          (click)="openEdit(trainer)"
+        ><i pButtonIcon class="pi pi-pencil"></i></button></ng-container>
+        <ng-container *appHasPermission="'DELETE /api/trainers/:id'"><button
+          pButton
+          type="button"
+          text
+          rounded
+          severity="danger"
+          aria-label="Desactivar entrenador"
+          pTooltip="Desactivar"
+          (click)="deactivate(trainer)"
+        ><i pButtonIcon class="pi pi-trash"></i></button></ng-container>
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="5">
+        @if (filter()) {
+          <app-empty-state
+            icon="pi pi-search"
+            title="Sin coincidencias"
+            message="Ningún entrenador coincide. Borra el filtro para ver todos."
+          />
+        } @else {
+          <app-empty-state
+            icon="pi pi-id-card"
+            title="Sin entrenadores"
+            message="Crea el primero con «Nuevo entrenador»."
+          />
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
+
+<p-dialog
+  [visible]="dialogVisible()"
+  (visibleChange)="dialogVisible.set($event)"
+  [header]="editing() ? 'Editar entrenador' : 'Nuevo entrenador'"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-2xl mx-4"
+>
+  <app-trainer-form
+    [trainer]="editing()"
+    [saving]="saving()"
+    [resetKey]="resetKey()"
+    (saved)="save($event)"
+    (cancelled)="dialogVisible.set(false)"
+  />
+</p-dialog>

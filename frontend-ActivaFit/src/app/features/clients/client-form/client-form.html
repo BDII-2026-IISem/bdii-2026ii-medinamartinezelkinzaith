@@ -1,0 +1,103 @@
+<form [formGroup]="form" (ngSubmit)="submit()" class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-3">
+    <div class="flex flex-col gap-2">
+      <label for="client-document-type">Tipo <span class="text-red-500">*</span></label>
+      <p-select
+        inputId="client-document-type"
+        formControlName="documentType"
+        [options]="documentTypes"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Selecciona"
+        styleClass="w-full"
+      />
+      @if (form.controls.documentType.touched && form.controls.documentType.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          Elige el tipo de documento.
+        </p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2 sm:col-span-2">
+      <label for="client-document-number">
+        Número de documento <span class="text-red-500">*</span>
+      </label>
+      <input
+        id="client-document-number"
+        pInputText
+        formControlName="documentNumber"
+        class="w-full"
+        placeholder="1234567890"
+        autocomplete="off"
+      />
+      @if (form.controls.documentNumber.touched && form.controls.documentNumber.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El número es obligatorio y debe tener entre 5 y 30 caracteres.
+        </p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex flex-col gap-2">
+    <label for="client-name">Nombre <span class="text-red-500">*</span></label>
+    <input
+      id="client-name"
+      pInputText
+      formControlName="name"
+      class="w-full"
+      placeholder="Ana Torres"
+      autocomplete="name"
+    />
+    @if (form.controls.name.touched && form.controls.name.invalid) {
+      <p-message severity="error" size="small" variant="simple">
+        El nombre es obligatorio y debe tener al menos 2 caracteres.
+      </p-message>
+    }
+  </div>
+
+  <div class="grid gap-4 sm:grid-cols-2">
+    <div class="flex flex-col gap-2">
+      <label for="client-phone">Teléfono</label>
+      <input
+        id="client-phone"
+        pInputText
+        formControlName="phone"
+        class="w-full"
+        placeholder="300 123 4567"
+        autocomplete="tel"
+      />
+      @if (form.controls.phone.touched && form.controls.phone.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          Usa entre 7 y 30 caracteres: números, espacios, +, - y paréntesis.
+        </p-message>
+      }
+    </div>
+
+    <div class="flex flex-col gap-2">
+      <label for="client-email">Email <span class="text-red-500">*</span></label>
+      <input
+        id="client-email"
+        type="email"
+        pInputText
+        formControlName="email"
+        class="w-full"
+        placeholder="ana@activafit.test"
+        autocomplete="email"
+      />
+      @if (form.controls.email.touched && form.controls.email.invalid) {
+        <p-message severity="error" size="small" variant="simple">
+          El email es obligatorio y debe tener un formato válido.
+        </p-message>
+      }
+    </div>
+  </div>
+
+  <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+    <button pButton type="button" severity="secondary" outlined (click)="cancelled.emit()">
+      <span pButtonLabel>Cancelar</span>
+    </button>
+    <button pButton type="submit" [loading]="saving()">
+      <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Guardar</span>
+    </button>
+  </div>
+</form>

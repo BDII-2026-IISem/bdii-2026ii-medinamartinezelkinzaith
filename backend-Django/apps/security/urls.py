@@ -3,12 +3,14 @@ from rest_framework.routers import SimpleRouter
 
 from apps.security.auth_views import LoginAPIView, LogoutAPIView, RefreshAPIView
 from apps.security.rbac_views import (
+    EffectivePermissionsAPIView,
     ProfileAPIView,
     ResourceRoleViewSet,
     ResourceViewSet,
     RoleUserViewSet,
     RoleViewSet,
     UserViewSet,
+    UserPermissionsAPIView,
 )
 
 router = SimpleRouter(use_regex_path=False)
@@ -23,6 +25,8 @@ urlpatterns = [
     path("auth/refresh/", RefreshAPIView.as_view(), name="auth-refresh"),
     path("auth/logout/", LogoutAPIView.as_view(), name="auth-logout"),
     path("auth/profile/", ProfileAPIView.as_view(), name="auth-profile"),
+    path("auth/permissions/", EffectivePermissionsAPIView.as_view(), name="auth-permissions"),
+    path("users/<int:pk>/permissions/", UserPermissionsAPIView.as_view(), name="user-permissions"),
 ]
 
 urlpatterns += router.urls

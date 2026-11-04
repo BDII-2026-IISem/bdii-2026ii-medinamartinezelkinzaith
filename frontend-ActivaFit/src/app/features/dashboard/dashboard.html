@@ -1,0 +1,77 @@
+<app-page-header title="Panel" subtitle="Resumen del día, derivado de tres respuestas del servidor.">
+  <button pButton type="button" severity="secondary" outlined [loading]="loading()" (click)="load()">
+    <i pButtonIcon class="pi pi-refresh"></i><span pButtonLabel>Recargar</span>
+  </button>
+</app-page-header>
+
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+  <p-card class="block">
+    <p class="text-sm text-slate-500">Membresías vigentes</p>
+    <p class="mt-1 text-3xl font-semibold text-slate-900">{{ validCount() }}</p>
+  </p-card>
+
+  <p-card class="block">
+    <p class="text-sm text-slate-500">Cobrado hoy</p>
+    <p class="mt-1 text-3xl font-semibold text-slate-900">
+      {{ todayTotal() | currency: 'COP' : 'symbol-narrow' : '1.0-0' }}
+    </p>
+    <p class="text-xs text-slate-400">{{ todayCount() }} pagos activos de hoy</p>
+  </p-card>
+
+  <p-card class="block">
+    <p class="text-sm text-slate-500">Por vencer en 7 días</p>
+    <p class="mt-1 text-3xl font-semibold text-slate-900">{{ expiring().length }}</p>
+  </p-card>
+
+  <p-card class="block">
+    <p class="text-sm text-slate-500">Clientes activos</p>
+    <p class="mt-1 text-3xl font-semibold text-slate-900">{{ clientsCount() }}</p>
+  </p-card>
+</div>
+
+<h2 class="mb-3 mt-8 text-lg font-semibold text-slate-800">Membresías por vencer</h2>
+
+<p-table [value]="expiring()" [loading]="loading()" dataKey="id" tableStyleClass="min-w-2xl">
+  <ng-template #header>
+    <tr>
+      <th>Membresía</th>
+      <th>Cliente</th>
+      <th>Plan</th>
+      <th>Vence</th>
+    </tr>
+  </ng-template>
+
+  <ng-template #body let-membership>
+    <tr>
+      <td>
+        <a
+          class="font-medium text-blue-700 hover:underline"
+          [routerLink]="['/membresias', membership.id]"
+        >
+          #{{ membership.id }}
+        </a>
+      </td>
+      <td class="text-sm text-slate-700">{{ membership.clientName || 'Cliente #' + membership.client }}</td>
+      <td class="text-sm text-slate-700">{{ membership.planName || 'Plan #' + membership.plan }}</td>
+      <td class="text-sm text-slate-600">
+        {{ membership.endDate }} · {{ daysLeft(membership) }}
+      </td>
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage>
+    <tr>
+      <td colspan="4">
+        <app-empty-state
+          icon="pi pi-check-circle"
+          title="Nada por vencer"
+          message="Ninguna membresía activa vence en los próximos 7 días."
+        />
+      </td>
+    </tr>
+  </ng-template>
+</p-table>
