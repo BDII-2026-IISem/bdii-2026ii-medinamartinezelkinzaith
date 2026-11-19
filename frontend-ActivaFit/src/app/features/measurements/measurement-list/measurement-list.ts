@@ -12,14 +12,12 @@ import { TooltipModule } from 'primeng/tooltip';
 import { forkJoin } from 'rxjs';
 import { Client } from '../../../core/models/client.model';
 import { Measurement, MeasurementPayload } from '../../../core/models/measurement.model';
-import { Trainer } from '../../../core/models/trainer.model';
 import { NotificationService } from '../../../core/services/notification.service';
 import { filterRows } from '../../../core/utils/filter-rows';
 import { toApiMessage } from '../../../core/utils/to-api-message';
 import { EmptyState } from '../../../shared/ui/empty-state/empty-state';
 import { PageHeader } from '../../../shared/ui/page-header/page-header';
 import { ClientApi } from '../../clients/client-api';
-import { TrainerApi } from '../../trainers/trainer-api';
 import { MeasurementApi } from '../measurement-api';
 import { MeasurementForm } from '../measurement-form/measurement-form';
 
@@ -47,13 +45,11 @@ import { MeasurementForm } from '../measurement-form/measurement-form';
 export class MeasurementList {
   private readonly api = inject(MeasurementApi);
   private readonly clientsApi = inject(ClientApi);
-  private readonly trainersApi = inject(TrainerApi);
   private readonly notify = inject(NotificationService);
   private readonly confirmation = inject(ConfirmationService);
 
   readonly rows = signal<Measurement[]>([]);
   readonly clients = signal<Client[]>([]);
-  readonly trainers = signal<Trainer[]>([]);
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly error = signal<string | null>(null);
@@ -65,12 +61,9 @@ export class MeasurementList {
   private readonly clientNames = computed(
     () => new Map(this.clients().map((client) => [client.id, client.name])),
   );
-  private readonly trainerNames = computed(
-    () => new Map(this.trainers().map((trainer) => [trainer.id, trainer.name])),
-  );
 
   readonly visibleRows = computed(() =>
-    filterRows(this.rows(), this.filter(), (m) => [this.clientLabel(m), this.trainerLabel(m)]),
+    filterRows(this.rows(), this.filter(), (m) => [this.clientLabel(m)]),
   );
 
   constructor() {
@@ -83,12 +76,10 @@ export class MeasurementList {
     forkJoin({
       measurements: this.api.list(),
       clients: this.clientsApi.list('active'),
-      trainers: this.trainersApi.list('active'),
     }).subscribe({
-      next: ({ measurements, clients, trainers }) => {
+      next: ({ measurements, clients }) => {
         this.rows.set(measurements);
         this.clients.set(clients);
-        this.trainers.set(trainers);
         this.loading.set(false);
       },
       error: (error: unknown) => {
@@ -107,13 +98,6 @@ export class MeasurementList {
     );
   }
 
-  trainerLabel(measurement: Measurement): string {
-    return (
-      measurement.trainerName ??
-      this.trainerNames().get(measurement.trainerId) ??
-      `Entrenador #${measurement.trainerId}`
-    );
-  }
 
   openCreate(): void {
     this.editing.set(null);

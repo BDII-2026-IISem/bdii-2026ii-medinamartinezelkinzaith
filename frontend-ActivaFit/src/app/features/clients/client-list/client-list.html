@@ -1,14 +1,26 @@
-<app-page-header title="Clientes" subtitle="La baja es lógica: el cliente queda inactivo.">
-  <p-tag [value]="rows().length + ' registros'" severity="info" [rounded]="true" />
-<ng-container *appHasPermission="'POST /api/clients'">
-  <button pButton type="button" (click)="openCreate()">
-    <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nuevo cliente</span>
-  </button>
-</ng-container>
+
+<app-page-header
+  title="Clientes"
+  subtitle="La baja es lógica: el cliente queda inactivo."
+>
+  <p-tag
+    [value]="rows().length + ' registros'"
+    severity="info"
+    [rounded]="true"
+  />
+
+  <ng-container *appHasPermission="'POST /api/clients'">
+    <button pButton type="button" (click)="openCreate()">
+      <i pButtonIcon class="pi pi-plus"></i>
+      <span pButtonLabel>Nuevo cliente</span>
+    </button>
+  </ng-container>
 </app-page-header>
 
 @if (error()) {
-  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+  <p-message severity="error" styleClass="mb-4 w-full">
+    {{ error() }}
+  </p-message>
 }
 
 <p-table
@@ -34,8 +46,14 @@
   <ng-template #header>
     <tr>
       <th>Documento</th>
-      <th pSortableColumn="name">Nombre <p-sort-icon field="name" /></th>
-      <th pSortableColumn="email">Contacto <p-sort-icon field="email" /></th>
+      <th pSortableColumn="name">
+        Nombre
+        <p-sort-icon field="name" />
+      </th>
+      <th pSortableColumn="email">
+        Contacto
+        <p-sort-icon field="email" />
+      </th>
       <th>Estado</th>
       <th class="w-32 text-right">Acciones</th>
     </tr>
@@ -44,40 +62,69 @@
   <ng-template #body let-client>
     <tr>
       <td>
-        <p class="text-sm text-slate-700">{{ client.documentNumber }}</p>
-        <p class="text-xs text-slate-400">{{ client.documentType }}</p>
+        <p class="text-sm text-slate-700">
+          {{ client.documentNumber }}
+        </p>
+        <p class="text-xs text-slate-400">
+          {{ client.documentType }}
+        </p>
       </td>
+
       <td>
-        <p class="font-medium text-slate-800">{{ client.name }}</p>
-        <p class="text-xs text-slate-400">#{{ client.id }}</p>
+        <p class="font-medium text-slate-800">
+          {{ client.name }}
+        </p>
+        <p class="text-xs text-slate-400">
+          #{{ client.id }}
+        </p>
       </td>
+
       <td>
-        <p class="text-sm text-slate-700">{{ client.email || '—' }}</p>
-        <p class="text-xs text-slate-400">{{ client.phone || 'Sin teléfono' }}</p>
+        <p class="text-sm text-slate-700">
+          {{ client.email || '—' }}
+        </p>
+        <p class="text-xs text-slate-400">
+          {{ client.phone || 'Sin teléfono' }}
+        </p>
       </td>
-      <td><app-status-tag [status]="client.status" /></td>
+
+      <td>
+        <app-status-tag [status]="client.status" />
+      </td>
+
       <td class="text-right">
-        <button
-          pButton
-          type="button"
-          text
-          rounded
-          severity="secondary"
-          aria-label="Editar cliente"
-          pTooltip="Editar"
-          (click)="openEdit(client)"
-        ><i pButtonIcon class="pi pi-pencil"></i></button>
-        <button
-          pButton
-          type="button"
-          text
-          rounded
-          severity="danger"
-          aria-label="Dar de baja al cliente"
-          pTooltip="Dar de baja"
-          [disabled]="client.status === 'inactive'"
-          (click)="remove(client)"
-        ><i pButtonIcon class="pi pi-trash"></i></button>
+
+        <ng-container *appHasPermission="'PATCH /api/clients/:id'">
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="secondary"
+            aria-label="Editar cliente"
+            pTooltip="Editar"
+            (click)="openEdit(client)"
+          >
+            <i pButtonIcon class="pi pi-pencil"></i>
+          </button>
+        </ng-container>
+
+        <ng-container *appHasPermission="'DELETE /api/clients/:id'">
+          <button
+            pButton
+            type="button"
+            text
+            rounded
+            severity="danger"
+            aria-label="Dar de baja al cliente"
+            pTooltip="Dar de baja"
+            [disabled]="client.status === 'inactive'"
+            (click)="remove(client)"
+          >
+            <i pButtonIcon class="pi pi-trash"></i>
+          </button>
+        </ng-container>
+
       </td>
     </tr>
   </ng-template>

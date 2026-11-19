@@ -26,7 +26,7 @@
       type="search"
       class="w-full"
       aria-label="Buscar medidas"
-      placeholder="Buscar por cliente o entrenador…"
+      placeholder="Buscar por cliente…"
       [value]="filter()"
       (input)="filter.set($any($event.target).value)"
     />
@@ -36,7 +36,6 @@
     <tr>
       <th>Fecha</th>
       <th>Cliente</th>
-      <th>Entrenador</th>
       <th class="text-right">Peso</th>
       <th class="text-right">Altura</th>
       <th class="text-right">Grasa</th>
@@ -52,7 +51,6 @@
         <p class="text-xs text-slate-400">#{{ measurement.id }}</p>
       </td>
       <td class="text-sm text-slate-700">{{ clientLabel(measurement) }}</td>
-      <td><p-tag [value]="trainerLabel(measurement)" severity="info" [rounded]="true" /></td>
       <td class="text-right text-sm text-slate-700">{{ measurement.weight }} kg</td>
       <td class="text-right text-sm text-slate-700">{{ measurement.height }} cm</td>
       <td class="text-right text-sm text-slate-700">
@@ -86,7 +84,7 @@
 
   <ng-template #emptymessage>
     <tr>
-      <td colspan="8">
+      <td colspan="7">
         @if (filter()) {
           <app-empty-state
             icon="pi pi-search"
@@ -117,7 +115,6 @@
   <app-measurement-form
     [measurement]="editing()"
     [clients]="clients()"
-    [trainers]="trainers()"
     [saving]="saving()"
     [resetKey]="resetKey()"
     (saved)="save($event)"

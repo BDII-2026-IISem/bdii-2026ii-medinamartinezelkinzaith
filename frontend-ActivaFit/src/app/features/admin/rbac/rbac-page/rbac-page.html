@@ -1,0 +1,40 @@
+<app-page-header
+  title="Roles y permisos (RBAC)"
+  subtitle="Administra roles, asigna usuarios y define permisos de CRUD sobre las entidades del negocio."
+/>
+
+<p-tabs [value]="tab()" (valueChange)="tab.set($event ?? 'roles')">
+  <p-tablist>
+    <p-tab value="roles"><i class="pi pi-user mr-2"></i>Roles</p-tab>
+    <p-tab value="usuarios"><i class="pi pi-users mr-2"></i>Usuarios</p-tab>
+    <p-tab value="recursos"><i class="pi pi-server mr-2"></i>Recursos</p-tab>
+  </p-tablist>
+  <p-tabpanels>
+    <p-tabpanel value="roles">
+      @if (tab() === 'roles') {
+        <app-role-permissions />
+      }
+    </p-tabpanel>
+    <p-tabpanel value="usuarios">
+      @if (tab() === 'usuarios') {
+        <app-user-list />
+      }
+    </p-tabpanel>
+    <p-tabpanel value="recursos">
+      @if (tab() === 'recursos') {
+        <app-resource-list />
+      }
+    </p-tabpanel>
+  </p-tabpanels>
+</p-tabs>
+
+<section class="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+  <p class="mb-2 font-medium text-slate-700"><i class="pi pi-info-circle mr-2"></i>Modelo RBAC y tablas utilizadas</p>
+  <ul class="grid gap-1 sm:grid-cols-2">
+    <li><code>users</code> · usuarios del sistema</li>
+    <li><code>roles</code> · roles, por ejemplo admin o consulta</li>
+    <li><code>role_users</code> · asignación de usuarios a roles (N:M)</li>
+    <li><code>resources</code> · operaciones: un verbo y una ruta</li>
+    <li><code>resource_roles</code> · permisos por rol y recurso (C, R, U, D)</li>
+  </ul>
+</section>

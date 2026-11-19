@@ -6,7 +6,6 @@ import { MessageModule } from 'primeng/message';
 import { SelectModule } from 'primeng/select';
 import { Client } from '../../../core/models/client.model';
 import { Measurement, MeasurementPayload } from '../../../core/models/measurement.model';
-import { Trainer } from '../../../core/models/trainer.model';
 
 /** Alta y edición de una medida. No conoce la API: recibe y emite. */
 @Component({
@@ -19,7 +18,6 @@ import { Trainer } from '../../../core/models/trainer.model';
 export class MeasurementForm {
   readonly measurement = input<Measurement | null>(null);
   readonly clients = input<Client[]>([]);
-  readonly trainers = input<Trainer[]>([]);
   readonly resetKey = input(0);
   readonly saving = input(false);
 
@@ -30,7 +28,6 @@ export class MeasurementForm {
 
   readonly form = this.fb.group({
     clientId: this.fb.control<number | null>(null, Validators.required),
-    trainerId: this.fb.control<number | null>(null, Validators.required),
     weight: this.fb.control<number | null>(null, [
       Validators.required,
       Validators.min(0.01),
@@ -51,7 +48,6 @@ export class MeasurementForm {
       this.resetKey();
       this.form.reset({
         clientId: current?.clientId ?? null,
-        trainerId: current?.trainerId ?? null,
         weight: current ? Number(current.weight) : null,
         height: current ? Number(current.height) : null,
         bodyFat: current?.bodyFat != null ? Number(current.bodyFat) : null,
@@ -68,7 +64,6 @@ export class MeasurementForm {
     const value = this.form.getRawValue();
     this.saved.emit({
       clientId: value.clientId!,
-      trainerId: value.trainerId!,
       weight: Number(value.weight).toFixed(2),
       height: Number(value.height).toFixed(2),
       bodyFat: value.bodyFat === null ? null : Number(value.bodyFat).toFixed(2),

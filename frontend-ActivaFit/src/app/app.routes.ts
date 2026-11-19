@@ -131,6 +131,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/auth/forbidden/forbidden').then((m) => m.Forbidden),
       },
+
+       {
+        path: 'admin/rbac',
+        title: 'Roles y permisos · ActivaFit',
+        ...guarded('GET /api/resource-roles'),
+        loadComponent: () =>
+          import('./features/admin/rbac/rbac-page/rbac-page').then((m) => m.RbacPage),
+      },
             {
         path: 'admin/usuarios',
         title: 'Usuarios · ActivaFit',

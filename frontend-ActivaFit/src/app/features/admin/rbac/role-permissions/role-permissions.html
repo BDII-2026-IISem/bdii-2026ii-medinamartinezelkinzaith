@@ -1,0 +1,186 @@
+@if (error()) {
+  <p-message severity="error" styleClass="mb-4 w-full">{{ error() }}</p-message>
+}
+
+<div class="grid gap-4 lg:grid-cols-[20rem_1fr]">
+  <section class="rounded-xl border border-slate-200 bg-white p-4">
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="text-base font-semibold text-slate-800">Roles</h2>
+      <button pButton type="button" size="small" (click)="openNewRole()">
+        <i pButtonIcon class="pi pi-plus"></i><span pButtonLabel>Nuevo rol</span>
+      </button>
+    </div>
+    <input
+      pInputText
+      type="search"
+      class="mb-3 w-full"
+      aria-label="Buscar rol"
+      placeholder="Buscar rol…"
+      [value]="search()"
+      (input)="search.set($any($event.target).value)"
+    />
+    <ul class="grid gap-1">
+      @for (role of visibleRoles(); track role.id) {
+        <li>
+          <button
+            type="button"
+            class="w-full rounded-lg border px-3 py-2 text-left"
+            [class]="role.id === selectedId() ? 'border-indigo-300 bg-indigo-50' : 'border-transparent hover:bg-slate-50'"
+            (click)="select(role.id)"
+          >
+            <p class="font-medium text-slate-800">{{ role.name }}</p>
+            <p class="text-xs text-slate-500">{{ role.description || 'Sin descripción' }}</p>
+          </button>
+        </li>
+      } @empty {
+        <li class="py-6 text-center text-sm text-slate-400">Sin roles</li>
+      }
+    </ul>
+  </section>
+
+  <section class="rounded-xl border border-slate-200 bg-white p-4">
+    @if (selected(); as role) {
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-base font-semibold text-slate-800">Editar rol: {{ role.name }}</h2>
+        <div class="flex gap-2">
+          <button pButton type="button" severity="danger" outlined size="small" [disabled]="isOwnRole()" (click)="removeRole(role)">
+            <i pButtonIcon class="pi pi-trash"></i><span pButtonLabel>Eliminar</span>
+          </button>
+          <button pButton type="button" size="small" [loading]="saving()" (click)="save()">
+            <i pButtonIcon class="pi pi-save"></i><span pButtonLabel>Guardar cambios</span>
+          </button>
+        </div>
+      </div>
+      @if (isOwnRole()) {
+        <p class="mb-3 text-xs text-slate-500">Es un rol de tu sesión: no se puede eliminar.</p>
+      }
+
+      <form [formGroup]="form" class="grid gap-4 md:grid-cols-2">
+        <div class="flex flex-col gap-2">
+          <label for="rp-name">Nombre del rol <span class="text-red-500">*</span></label>
+          <input id="rp-name" pInputText formControlName="name" class="w-full" autocomplete="off" />
+          @if (form.controls.name.touched && form.controls.name.invalid) {
+            <p-message severity="error" size="small" variant="simple">Entre 2 y 100 caracteres.</p-message>
+          }
+        </div>
+        <div class="flex flex-col gap-2">
+          <label for="rp-description">Descripción</label>
+          <input id="rp-description" pInputText formControlName="description" class="w-full" />
+        </div>
+      </form>
+
+      <div class="mt-4">
+        <p class="mb-2 text-sm font-medium text-slate-700">Usuarios con este rol</p>
+        <div class="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 p-2">
+          @for (ru of assignedUsers(); track ru.id) {
+            <p-chip [label]="userLabel(ru)" icon="pi pi-user" [removable]="true" (onRemove)="unassign(ru)" />
+          } @empty {
+            <span class="px-1 text-sm text-slate-400">Ningún usuario tiene este rol.</span>
+          }
+        </div>
+        <div class="mt-2 flex flex-wrap gap-2">
+          <p-select
+            [formControl]="assignControl"
+            [options]="availableUsers()"
+            optionLabel="email"
+            optionValue="id"
+            placeholder="Selecciona un usuario"
+            [filter]="true"
+            filterBy="username,email"
+            appendTo="body"
+            styleClass="min-w-64"
+          />
+          <button pButton type="button" severity="secondary" outlined size="small" [disabled]="assignControl.value === null" (click)="assign()">
+            <i pButtonIcon class="pi pi-user-plus"></i><span pButtonLabel>Asignar usuario</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p class="text-sm font-medium text-slate-700">Permisos de recursos (entidades del negocio)</p>
+            <p class="text-xs text-slate-500">Define los permisos de CRUD que tendrá este rol sobre cada entidad.</p>
+          </div>
+          <div class="flex gap-2">
+            <button pButton type="button" severity="secondary" outlined size="small" (click)="markAll()">
+              <i pButtonIcon class="pi pi-check"></i><span pButtonLabel>Marcar todo</span>
+            </button>
+            <button pButton type="button" severity="secondary" outlined size="small" (click)="clearAll()">
+              <i pButtonIcon class="pi pi-times"></i><span pButtonLabel>Desmarcar todo</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[34rem] text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 text-left text-slate-600">
+                <th class="py-2 pr-4 font-medium">Recurso (Entidad)</th>
+                <th class="px-3 text-center font-medium"><i class="pi pi-plus mr-1"></i>Crear (C)</th>
+                <th class="px-3 text-center font-medium"><i class="pi pi-book mr-1"></i>Leer (R)</th>
+                <th class="px-3 text-center font-medium"><i class="pi pi-pencil mr-1"></i>Actualizar (U)</th>
+                <th class="px-3 text-center font-medium"><i class="pi pi-trash mr-1"></i>Eliminar (D)</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entity of entities; track entity.key) {
+                <tr class="border-b border-slate-100">
+                  <td class="py-2 pr-4 text-slate-800">
+                    <i [class]="entity.icon + ' mr-2 text-slate-500'"></i>{{ entity.label }}
+                  </td>
+                  @for (action of actions; track action) {
+                    <td class="px-3 text-center">
+                      @if (state(entity.key, action) === 'unavailable') {
+                        <span class="text-slate-300" title="Esta entidad no tiene esa operación">—</span>
+                      } @else {
+                        <input
+                          type="checkbox"
+                          class="size-4 accent-indigo-600"
+                          [checked]="state(entity.key, action) === 'checked'"
+                          [indeterminate]="state(entity.key, action) === 'partial'"
+                          [attr.aria-label]="actionNames[action] + ' ' + entity.label"
+                          (change)="toggle(entity.key, action)"
+                        />
+                      }
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    } @else {
+      <p class="py-10 text-center text-sm text-slate-400">Elige un rol de la lista o crea uno nuevo.</p>
+    }
+  </section>
+</div>
+
+<p-dialog
+  [visible]="newRoleVisible()"
+  (visibleChange)="newRoleVisible.set($event)"
+  header="Nuevo rol"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  styleClass="w-full max-w-md mx-4"
+>
+  <form [formGroup]="newForm" (ngSubmit)="createRole()" class="grid gap-4">
+    <div class="flex flex-col gap-2">
+      <label for="nr-name">Nombre del rol <span class="text-red-500">*</span></label>
+      <input id="nr-name" pInputText formControlName="name" class="w-full" placeholder="recepcion" autocomplete="off" />
+      @if (newForm.controls.name.touched && newForm.controls.name.invalid) {
+        <p-message severity="error" size="small" variant="simple">Entre 2 y 100 caracteres.</p-message>
+      }
+    </div>
+    <div class="flex flex-col gap-2">
+      <label for="nr-description">Descripción</label>
+      <input id="nr-description" pInputText formControlName="description" class="w-full" />
+    </div>
+    <div class="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <button pButton type="button" severity="secondary" outlined (click)="newRoleVisible.set(false)"><span pButtonLabel>Cancelar</span></button>
+      <button pButton type="submit"><span pButtonLabel>Crear rol</span></button>
+    </div>
+  </form>
+</p-dialog>

@@ -5,8 +5,6 @@ export interface Measurement extends Timestamps {
   id: number;
   clientId: number;
   clientName?: string;
-  trainerId: number;
-  trainerName?: string;
   weight: Money;
   height: Money;
   bodyFat: Money | null;
@@ -15,7 +13,6 @@ export interface Measurement extends Timestamps {
 
 export interface MeasurementPayload {
   clientId: number;
-  trainerId: number;
   weight: Money;
   height: Money;
   bodyFat: Money | null;

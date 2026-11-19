@@ -1,3 +1,4 @@
+
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
@@ -7,7 +8,6 @@ from apps.security.permissions import HasResourceAccess
 
 
 class MeasurementViewSet(viewsets.ModelViewSet):
-    queryset = Measurement.objects.select_related("client", "trainer")
+    queryset = Measurement.objects.select_related("client")
     serializer_class = MeasurementSerializer
     permission_classes = [IsAuthenticated, HasResourceAccess]
-    lookup_value_converter = "int"
